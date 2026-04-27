@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.env
+.venv
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Colab / Google Drive
+.config/
+drive/
+
+# Données sensibles (clés API, etc.)
+secrets.json
+*.key
+
+# Modèles fine-tunés (trop lourds pour git)
+lora_model/
+checkpoints/
+*.bin
+*.safetensors
+*.pt
+*.ckpt
+
+# Index FAISS (régénérable)
+faiss_index/
+*.index
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

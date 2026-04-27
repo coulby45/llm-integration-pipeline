@@ -1,0 +1,166 @@
+{
+  "generated_at": "2026-04-27T23:25:17",
+  "n_test_samples": 120,
+  "methods": [
+    {
+      "method": "Baseline",
+      "exact_match": 0.0,
+      "f1": 19.51,
+      "bertscore": 82.28,
+      "rouge_l": 16.37,
+      "hallucination": 87.73,
+      "latency_ms": 508.2,
+      "n": 120,
+      "bs_by_recency": {
+        "inconnu": 82.28
+      },
+      "bs_by_qtype": {
+        "factuel": 83.11,
+        "simple": 82.54,
+        "comprehension": 81.16,
+        "complexe": 82.18,
+        "synthese": 81.01
+      },
+      "hall_by_recency": {
+        "inconnu": 87.73
+      },
+      "hall_by_qtype": {
+        "factuel": 80.2,
+        "simple": 97.46,
+        "comprehension": 87.89,
+        "complexe": 96.93,
+        "synthese": 86.45
+      },
+      "bs_by_dstype": {
+        "technique": 82.45,
+        "temporel": 82.02,
+        "multisauts": 82.36
+      },
+      "hall_by_dstype": {
+        "technique": 80.44,
+        "temporel": 85.56,
+        "multisauts": 97.2
+      }
+    },
+    {
+      "method": "RAG",
+      "exact_match": 0.0,
+      "f1": 28.59,
+      "bertscore": 84.88,
+      "rouge_l": 24.39,
+      "hallucination": 80.53,
+      "latency_ms": 814.4,
+      "n": 120,
+      "bs_by_recency": {
+        "inconnu": 84.88
+      },
+      "bs_by_qtype": {
+        "factuel": 86.41,
+        "simple": 83.26,
+        "comprehension": 83.25,
+        "complexe": 84.36,
+        "synthese": 84.3
+      },
+      "hall_by_recency": {
+        "inconnu": 80.53
+      },
+      "hall_by_qtype": {
+        "factuel": 71.4,
+        "simple": 95.71,
+        "comprehension": 78.3,
+        "complexe": 96.21,
+        "synthese": 73.64
+      },
+      "bs_by_dstype": {
+        "technique": 84.58,
+        "temporel": 86.24,
+        "multisauts": 83.81
+      },
+      "hall_by_dstype": {
+        "technique": 72.33,
+        "temporel": 73.3,
+        "multisauts": 95.96
+      }
+    },
+    {
+      "method": "Fine-tuné",
+      "exact_match": 1.67,
+      "f1": 28.41,
+      "bertscore": 85.32,
+      "rouge_l": 24.53,
+      "hallucination": 87.94,
+      "latency_ms": 6688.8,
+      "n": 120,
+      "bs_by_recency": {
+        "inconnu": 85.32
+      },
+      "bs_by_qtype": {
+        "factuel": 87.19,
+        "simple": 85.88,
+        "comprehension": 83.65,
+        "complexe": 83.23,
+        "synthese": 83.72
+      },
+      "hall_by_recency": {
+        "inconnu": 87.94
+      },
+      "hall_by_qtype": {
+        "factuel": 83.29,
+        "simple": 96.3,
+        "comprehension": 86.9,
+        "complexe": 97.24,
+        "synthese": 82.9
+      },
+      "bs_by_dstype": {
+        "technique": 85.4,
+        "temporel": 86.02,
+        "multisauts": 84.56
+      },
+      "hall_by_dstype": {
+        "technique": 81.03,
+        "temporel": 86.03,
+        "multisauts": 96.77
+      }
+    },
+    {
+      "method": "Hybride",
+      "exact_match": 2.5,
+      "f1": 31.03,
+      "bertscore": 85.43,
+      "rouge_l": 26.21,
+      "hallucination": 84.66,
+      "latency_ms": 10034.8,
+      "n": 120,
+      "bs_by_recency": {
+        "inconnu": 85.43
+      },
+      "bs_by_qtype": {
+        "factuel": 87.01,
+        "simple": 84.95,
+        "comprehension": 82.77,
+        "complexe": 84.07,
+        "synthese": 84.86
+      },
+      "hall_by_recency": {
+        "inconnu": 84.66
+      },
+      "hall_by_qtype": {
+        "factuel": 79.46,
+        "simple": 96.28,
+        "comprehension": 86.55,
+        "complexe": 97.15,
+        "synthese": 74.74
+      },
+      "bs_by_dstype": {
+        "technique": 85.82,
+        "temporel": 85.95,
+        "multisauts": 84.51
+      },
+      "hall_by_dstype": {
+        "technique": 76.95,
+        "temporel": 80.31,
+        "multisauts": 96.71
+      }
+    }
+  ]
+}
