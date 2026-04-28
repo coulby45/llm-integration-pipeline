@@ -181,6 +181,7 @@ test.json ──► Baseline (LLaMA 3.1 8B via Groq, sans contexte)       ──
 | **F1 token-level** | Overlap de tokens entre prédiction et référence | Lexical |
 | **ROUGE-L** | Plus longue sous-séquence commune | Lexical |
 | **BERTScore** | Similarité sémantique (`distilbert-base-multilingual`) | Sémantique |
+| **Accuracy@BS** | % réponses avec BERTScore ≥ seuil (80/85/90%) | Sémantique |
 | **Hallucination** | 1 − ROUGE-L(prédit, contexte source) — proxy | Fidélité |
 | **Latence** | Temps moyen de génération (ms) | Efficacité |
 
@@ -255,6 +256,7 @@ test.json ──► Baseline (LLaMA 3.1 8B via Groq, sans contexte)       ──
 | Fig. 6 | Trade-off qualité vs latence (scatter) |
 | Fig. 7 | Heatmap BERTScore méthodes × dataset_type |
 | Fig. 8 | Questions simples vs multi-sauts sur Arxiv |
+| Fig. 9 | **Accuracy par seuil BERTScore** (≥80%, ≥85%, ≥90%) |
 
 ---
 
