@@ -1,0 +1,145 @@
+% Article scientifique — Baseline, RAG, LoRA, RAFT, reranking, function calling (LLaMA 3.1 8B)
+% Compilation locale : pdflatex article_scientifique.tex (répéter 2× pour références croisées)
+% Ou importer ce fichier dans Overleaf (Menu principal → projet → upload).
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage[hidelinks]{hyperref}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\title{%
+Intégration de nouvelles informations dans les LLM :\\
+baseline, RAG, fine-tuning LoRA, RAFT, reranking et function calling\\
+sur corpus français hétérogène%
+}
+\author{Prénom Nom \and Affiliation}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Les grands modèles de langage subissent une date de coupure des connaissances ; intégrer des informations postérieures sans ré-entraînement complet motive des stratégies variées : récupération augmentée (RAG), adaptation efficace des poids (LoRA), pseudo-RAG à l'entraînement (RAFT), affinement du retrieveur par \emph{reranking}, ou encore décision de recherche via \emph{function calling}.
+Nous comparons six configurations sur un socle centré \emph{LLaMA 3.1 8B} : \textbf{baseline} (Groq, sans contexte), \textbf{RAG} (FAISS + chunks 400 mots, Groq), \textbf{fine-tuning LoRA} supervisé (Unsloth, adaptateur \texttt{lora\_adapter\_ft}), \textbf{RAFT} (contexte gold + distracteurs FAISS au train, adaptateur \texttt{lora\_adapter\_raft}), \textbf{RAG + reranking} (cross-encoder multilingue puis Groq), et \textbf{function calling} (outil \texttt{search\_docs} + Groq).
+Le jeu de données (Option~B) est entièrement en français, généré via l'API Groq (\texttt{llama-3.1-8b-instant}), \textbf{même famille} que la baseline et le RAG : le biais circulaire doit être discuté explicitement.
+Les agrégations de métriques (EM, F1, BERTScore, ROUGE-L, proxy d'hallucination, latence, etc.) sont produites par le notebook~\texttt{08\_evaluation.ipynb} à partir des six fichiers \texttt{*\_predictions.json}.
+Les lignes du tableau principal correspondant à RAFT, au reranking et au function calling doivent être \textbf{recopiées} depuis \texttt{final\_report.json} après chaque campagne complète ; les valeurs historiques ci-dessous illustrent surtout baseline, RAG et fine-tuné.
+\end{abstract}
+
+\noindent\textbf{Mots-clés :}
+grands modèles de langage, RAG, reranking, LoRA, RAFT, function calling, FAISS, français, hallucination
+
+\section{Introduction}
+\label{sec:intro}
+% Contexte : coupure de connaissance, besoin d'actualiser sans ré-entraînement complet.
+% Question de recherche : comparer six stratégies sur un protocole documenté (Groq vs local).
+
+\section{Travaux connexes}
+\label{sec:related}
+% RAG (Lewis et al.), FAISS, Sentence-Transformers, LoRA/QLoRA, RAFT, reranking, tool use.
+
+\section{Méthodologie}
+\label{sec:method}
+
+\subsection{Corpus et construction des paires question-réponse}
+% Option B : 1200 train / 300 test ; génération Groq llama-3.1-8b-instant ; champ contexte verbatim ; sources Wikipedia FR, HAL, presse.
+
+\subsection{Baseline}
+% Groq, LLaMA 3.1 8B, sans contexte documentaire. Notebook 03.
+
+\subsection{RAG}
+% Embeddings multilingues, index FAISS sur chunks 400 mots / chevauchement 100, top-5, générateur Groq. Notebook 03.
+
+\subsection{Fine-tuning LoRA}
+% Unsloth, QLoRA 4-bit, format Alpaca ; notebook 04 ; adaptateur lora_adapter_ft.
+Le fine-tuning (notebook~\texttt{04\_finetuning.ipynb}) entraîne un adaptateur LoRA (\texttt{lora\_adapter\_ft}) avec séparation train/validation et sélection du meilleur checkpoint.
+La génération est contrainte pour réduire les répétitions (\texttt{repetition\_penalty}, \texttt{no\_repeat\_ngram\_size}, nettoyage post-génération).
+
+\subsection{RAFT (pseudo-RAG au train)}
+\label{sec:raft}
+% Notebook 05_raft.ipynb : pour chaque exemple de train, top-k FAISS + distracteurs, gabarit Instruction/Context/Input/Response ; lora_adapter_raft ; raft_predictions.json.
+Le notebook~\texttt{05\_raft.ipynb} construit des exemples d'entraînement avec contexte (or ou récupéré) et distracteurs, entraîne un adaptateur dédié (\texttt{lora\_adapter\_raft}), puis infère sur le jeu de test vers \texttt{raft\_predictions.json}.
+
+\subsection{RAG avec reranking}
+\label{sec:rerank}
+% Notebook 06_rag_rerank.ipynb : récupération large, cross-encoder ms-marco multilingue, top-k, Groq ; rerank_predictions.json.
+Après une récupération dense élargie (top-$M$), un cross-encoder multilingue rerank les passages ; seuls les top-$k$ sont injectés dans le prompt Groq (\texttt{06\_rag\_rerank.ipynb} $\rightarrow$ \texttt{rerank\_predictions.json}).
+
+\subsection{Function calling}
+\label{sec:fc}
+% Notebook 07_function_calling.ipynb : schéma outil search_docs, exécution FAISS côté client, réponse finale Groq ; function_calling_predictions.json.
+Le modèle Groq peut invoquer l'outil \texttt{search\_docs} ; le client exécute la recherche FAISS et renvoie les passages avant la réponse finale (\texttt{07\_function\_calling.ipynb}).
+
+\subsection{Alignement des gabarits prompt (perspective)}
+\label{sec:prompt-align}
+Pour les méthodes locales (LoRA, RAFT), tout écart entre le format d'entraînement et celui de l'inférence peut dégrader les scores ; une piste consiste à injecter systématiquement un bloc \texttt{\#\#\# Context} aligné sur l'inférence.
+
+\subsection{Métriques}
+\label{sec:metrics}
+% EM, F1, BERTScore, ROUGE-L, METEOR (NLTK), IC bootstrap 95\,\% sur moyennes par paire, proxy hallucination, Acc@seuils, confiance.
+Le notebook~\texttt{08\_evaluation.ipynb} calcule notamment METEOR (NLTK) et des intervalles de confiance bootstrap ($B=1000$, percentiles 2{,}5 / 97{,}5) sur les scores \emph{par exemple} pour BERTScore, METEOR, F1 et ROUGE-L (champs \texttt{bertscore\_ci95\_*}, \texttt{meteor\_ci95\_*}, etc.\ dans \texttt{final\_report.json}).
+Un proxy de confiance (probabilités token-level) peut être reporté pour les générations locales (fine-tuné, RAFT) lorsque le champ est présent dans les JSON.
+
+\section{Résultats}
+\label{sec:results}
+
+\subsection{Tableau comparatif global}
+\label{tab:global}
+Le tableau~\ref{tab:six-methods} synthétise les scores sur l'ensemble de test ($n=300$, Option~B). Les valeurs \textbf{doivent} être synchronisées depuis \texttt{final\_report.json} (notebook~\texttt{08\_evaluation.ipynb}) après exécution des notebooks \texttt{03} à \texttt{07}.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Comparaison des six méthodes (Option~B, métriques globales ; compléter les lignes \emph{n/c} depuis le rapport).}
+  \label{tab:six-methods}
+  \begin{tabular}{lcccccccc}
+    \toprule
+    Méthode & F1 & BS & ROUGE-L & METEOR & Acc@85 & Hall.\,(\%) & Hall$\le$25 & Hall$\le$20 \\
+    \midrule
+    Baseline    & 12.7 & 80.8 & 12.0 & 16.9 & 10.6 & 86.4 & 0 & 0 \\
+    RAG         & \textbf{27.4} & \textbf{85.0} & \textbf{24.6} & \textbf{34.5} & \textbf{44.7} & \textbf{72.7} & \textbf{2.3} & \textbf{2.3} \\
+    Fine-tuné   & 12.3 & 81.4 & 11.1 & 18.1 & 7.6  & 87.7 & 0 & 0 \\
+    RAFT        & n/c & n/c & n/c & n/c & n/c & n/c & n/c & n/c \\
+    RAG+rerank  & n/c & n/c & n/c & n/c & n/c & n/c & n/c & n/c \\
+    Fun.\,call. & n/c & n/c & n/c & n/c & n/c & n/c & n/c & n/c \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent\textit{Notes :} Exact Match $=0$ pour baseline/RAG/fine-tuné sur le run recopié ; les IC bootstrap (BERTScore, METEOR, F1, ROUGE-L) sont à recopier depuis \texttt{final\_report.json} après chaque campagne.
+
+\subsection{Figures}
+\label{sec:figs}
+% Insérer \includegraphics depuis results/plots/ — figures du notebook 08_evaluation.
+
+\section{Discussion}
+\label{sec:discussion}
+% RAG vs rerank : compromis qualité / latence cross-encoder.
+% Function calling : analyse des décisions de recherche et des erreurs d'outil.
+% LoRA vs RAFT : impact du format contexte + distracteurs.
+
+\section{Conclusion}
+\label{sec:conclusion}
+% Six stratégies, corpus FR Option B, limite biais Groq ; perspectives évaluation humaine et ablations retrieveur.
+
+\section*{Remerciements}
+% Optionnel.
+
+\bibliographystyle{IEEEtran}
+\begin{thebibliography}{99}
+  \bibitem{lewis2020rag}
+  P.~Lewis \emph{et al.}, ``Retrieval-augmented generation for knowledge-intensive NLP tasks,'' in \emph{NeurIPS}, 2020.
+  \bibitem{hu2022lora}
+  E.~J.~Hu \emph{et al.}, ``LoRA: Low-rank adaptation of large language models,'' in \emph{ICLR}, 2022.
+  % Compléter : RAFT (Hong et al.), cross-encoders, BERTScore, FAISS, LLaMA~3, etc.
+\end{thebibliography}
+
+\end{document}

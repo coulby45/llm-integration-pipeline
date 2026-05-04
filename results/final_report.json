@@ -1,0 +1,386 @@
+{
+  "generated_at": "2026-05-04T07:31:49",
+  "n_test_samples": 290,
+  "bs_thresholds_used": [
+    80,
+    85,
+    90
+  ],
+  "bootstrap_n": 1000,
+  "bootstrap_seed": 42,
+  "bootstrap_ci_level": 0.95,
+  "methods": [
+    {
+      "method": "Baseline",
+      "exact_match": 0.0,
+      "f1": 9.3,
+      "bertscore": 79.69,
+      "rouge_l": 8.83,
+      "meteor": 22.76,
+      "hallucination": 85.11,
+      "latency_ms": 565.0,
+      "confidence_mean": null,
+      "n": 290,
+      "bootstrap_n": 1000,
+      "bertscore_ci95_low": 79.31,
+      "bertscore_ci95_high": 80.08,
+      "meteor_ci95_low": 20.83,
+      "meteor_ci95_high": 24.9,
+      "f1_ci95_low": 8.13,
+      "f1_ci95_high": 10.61,
+      "rouge_l_ci95_low": 7.91,
+      "rouge_l_ci95_high": 9.88,
+      "acc_bs80": 41.03,
+      "acc_bs85": 8.28,
+      "acc_bs90": 0.0,
+      "bs_by_recency": {
+        "récent": 79.44,
+        "intermédiaire": 80.95,
+        "fondamental": 80.37
+      },
+      "bs_by_qtype": {
+        "factuel": 79.51,
+        "simple": 78.52,
+        "complexe": 83.0,
+        "synthese": 79.23,
+        "comprehension": 79.11
+      },
+      "hall_by_recency": {
+        "récent": 84.9,
+        "intermédiaire": 84.45,
+        "fondamental": 87.28
+      },
+      "hall_by_qtype": {
+        "factuel": 81.29,
+        "simple": 88.08,
+        "complexe": 84.37,
+        "synthese": 86.37,
+        "comprehension": 87.51
+      },
+      "bs_by_dstype": {
+        "juridique": 79.43,
+        "multisauts": 80.51,
+        "technique": 80.6,
+        "temporel": 78.28
+      },
+      "hall_by_dstype": {
+        "juridique": 82.86,
+        "multisauts": 86.43,
+        "technique": 80.47,
+        "temporel": 88.07
+      },
+      "bs_multisauts_simple": 78.52,
+      "bs_multisauts_complexe": 83.0
+    },
+    {
+      "method": "RAG",
+      "exact_match": 0.0,
+      "f1": 18.31,
+      "bertscore": 83.08,
+      "rouge_l": 17.0,
+      "meteor": 38.99,
+      "hallucination": 74.18,
+      "latency_ms": 939.2,
+      "confidence_mean": null,
+      "n": 290,
+      "bootstrap_n": 1000,
+      "bertscore_ci95_low": 82.57,
+      "bertscore_ci95_high": 83.6,
+      "meteor_ci95_low": 36.38,
+      "meteor_ci95_high": 41.85,
+      "f1_ci95_low": 16.56,
+      "f1_ci95_high": 20.38,
+      "rouge_l_ci95_low": 15.4,
+      "rouge_l_ci95_high": 18.84,
+      "acc_bs80": 72.07,
+      "acc_bs85": 36.55,
+      "acc_bs90": 5.17,
+      "bs_by_recency": {
+        "récent": 82.76,
+        "intermédiaire": 83.79,
+        "fondamental": 84.81
+      },
+      "bs_by_qtype": {
+        "factuel": 83.06,
+        "simple": 82.05,
+        "complexe": 86.81,
+        "synthese": 82.63,
+        "comprehension": 81.67
+      },
+      "hall_by_recency": {
+        "récent": 74.31,
+        "intermédiaire": 73.71,
+        "fondamental": 73.68
+      },
+      "hall_by_qtype": {
+        "factuel": 70.44,
+        "simple": 73.46,
+        "complexe": 74.93,
+        "synthese": 74.66,
+        "comprehension": 80.6
+      },
+      "bs_by_dstype": {
+        "juridique": 81.02,
+        "multisauts": 84.17,
+        "technique": 83.31,
+        "temporel": 82.34
+      },
+      "hall_by_dstype": {
+        "juridique": 72.92,
+        "multisauts": 74.11,
+        "technique": 71.59,
+        "temporel": 76.57
+      },
+      "bs_multisauts_simple": 82.05,
+      "bs_multisauts_complexe": 86.81
+    },
+    {
+      "method": "Fine-tuné",
+      "exact_match": 0.0,
+      "f1": 8.0,
+      "bertscore": 79.35,
+      "rouge_l": 7.33,
+      "meteor": 21.82,
+      "hallucination": 90.21,
+      "latency_ms": 17660.7,
+      "confidence_mean": 0.6548,
+      "n": 290,
+      "bootstrap_n": 1000,
+      "bertscore_ci95_low": 78.99,
+      "bertscore_ci95_high": 79.68,
+      "meteor_ci95_low": 19.89,
+      "meteor_ci95_high": 23.69,
+      "f1_ci95_low": 6.98,
+      "f1_ci95_high": 9.15,
+      "rouge_l_ci95_low": 6.57,
+      "rouge_l_ci95_high": 8.16,
+      "acc_bs80": 40.34,
+      "acc_bs85": 4.14,
+      "acc_bs90": 0.0,
+      "bs_by_recency": {
+        "récent": 79.31,
+        "intermédiaire": 79.23,
+        "fondamental": 79.75
+      },
+      "bs_by_qtype": {
+        "factuel": 78.16,
+        "simple": 77.52,
+        "complexe": 82.32,
+        "synthese": 79.73,
+        "comprehension": 80.36
+      },
+      "hall_by_recency": {
+        "récent": 90.43,
+        "intermédiaire": 89.18,
+        "fondamental": 89.58
+      },
+      "hall_by_qtype": {
+        "factuel": 91.37,
+        "simple": 91.96,
+        "complexe": 86.73,
+        "synthese": 89.79,
+        "comprehension": 89.91
+      },
+      "bs_by_dstype": {
+        "juridique": 79.03,
+        "multisauts": 79.65,
+        "technique": 79.36,
+        "temporel": 79.14
+      },
+      "hall_by_dstype": {
+        "juridique": 87.56,
+        "multisauts": 89.64,
+        "technique": 90.24,
+        "temporel": 91.24
+      },
+      "bs_multisauts_simple": 77.52,
+      "bs_multisauts_complexe": 82.32
+    },
+    {
+      "method": "RAFT",
+      "exact_match": 0.0,
+      "f1": 6.0,
+      "bertscore": 80.18,
+      "rouge_l": 5.98,
+      "meteor": 15.84,
+      "hallucination": 91.04,
+      "latency_ms": 20624.6,
+      "confidence_mean": 0.7472,
+      "n": 290,
+      "bootstrap_n": 1000,
+      "bertscore_ci95_low": 79.81,
+      "bertscore_ci95_high": 80.52,
+      "meteor_ci95_low": 14.0,
+      "meteor_ci95_high": 17.67,
+      "f1_ci95_low": 5.14,
+      "f1_ci95_high": 6.91,
+      "rouge_l_ci95_low": 5.22,
+      "rouge_l_ci95_high": 6.79,
+      "acc_bs80": 52.76,
+      "acc_bs85": 5.17,
+      "acc_bs90": 0.34,
+      "bs_by_recency": {
+        "récent": 80.21,
+        "intermédiaire": 79.51,
+        "fondamental": 80.51
+      },
+      "bs_by_qtype": {
+        "factuel": 79.66,
+        "simple": 80.84,
+        "complexe": 79.91,
+        "synthese": 80.21,
+        "comprehension": 80.57
+      },
+      "hall_by_recency": {
+        "récent": 90.76,
+        "intermédiaire": 91.74,
+        "fondamental": 92.46
+      },
+      "hall_by_qtype": {
+        "factuel": 91.29,
+        "simple": 91.85,
+        "complexe": 90.48,
+        "synthese": 90.22,
+        "comprehension": 91.49
+      },
+      "bs_by_dstype": {
+        "juridique": 79.26,
+        "multisauts": 80.43,
+        "technique": 81.02,
+        "temporel": 79.46
+      },
+      "hall_by_dstype": {
+        "juridique": 87.86,
+        "multisauts": 91.24,
+        "technique": 90.94,
+        "temporel": 91.56
+      },
+      "bs_multisauts_simple": 80.84,
+      "bs_multisauts_complexe": 79.91
+    },
+    {
+      "method": "Rerank",
+      "exact_match": 0.0,
+      "f1": 19.43,
+      "bertscore": 83.58,
+      "rouge_l": 18.2,
+      "meteor": 37.95,
+      "hallucination": 73.91,
+      "latency_ms": 621.4,
+      "confidence_mean": null,
+      "n": 290,
+      "bootstrap_n": 1000,
+      "bertscore_ci95_low": 83.11,
+      "bertscore_ci95_high": 84.1,
+      "meteor_ci95_low": 35.24,
+      "meteor_ci95_high": 40.54,
+      "f1_ci95_low": 17.53,
+      "f1_ci95_high": 21.48,
+      "rouge_l_ci95_low": 16.53,
+      "rouge_l_ci95_high": 20.15,
+      "acc_bs80": 76.9,
+      "acc_bs85": 37.93,
+      "acc_bs90": 7.93,
+      "bs_by_recency": {
+        "récent": 83.15,
+        "intermédiaire": 84.93,
+        "fondamental": 85.5
+      },
+      "bs_by_qtype": {
+        "factuel": 82.9,
+        "simple": 83.53,
+        "complexe": 87.09,
+        "synthese": 83.02,
+        "comprehension": 82.66
+      },
+      "hall_by_recency": {
+        "récent": 74.48,
+        "intermédiaire": 71.25,
+        "fondamental": 72.19
+      },
+      "hall_by_qtype": {
+        "factuel": 73.79,
+        "simple": 72.04,
+        "complexe": 71.82,
+        "synthese": 75.23,
+        "comprehension": 75.98
+      },
+      "bs_by_dstype": {
+        "juridique": 84.13,
+        "multisauts": 85.11,
+        "technique": 82.5,
+        "temporel": 82.96
+      },
+      "hall_by_dstype": {
+        "juridique": 65.78,
+        "multisauts": 71.95,
+        "technique": 73.24,
+        "temporel": 77.84
+      },
+      "bs_multisauts_simple": 83.53,
+      "bs_multisauts_complexe": 87.09
+    },
+    {
+      "method": "Function-calling",
+      "exact_match": 0.0,
+      "f1": 13.45,
+      "bertscore": 81.16,
+      "rouge_l": 12.55,
+      "meteor": 30.81,
+      "hallucination": 80.21,
+      "latency_ms": 927.2,
+      "confidence_mean": null,
+      "n": 290,
+      "bootstrap_n": 1000,
+      "bertscore_ci95_low": 80.61,
+      "bertscore_ci95_high": 81.74,
+      "meteor_ci95_low": 28.26,
+      "meteor_ci95_high": 33.24,
+      "f1_ci95_low": 11.82,
+      "f1_ci95_high": 15.14,
+      "rouge_l_ci95_low": 11.14,
+      "rouge_l_ci95_high": 14.02,
+      "acc_bs80": 55.86,
+      "acc_bs85": 21.72,
+      "acc_bs90": 2.41,
+      "bs_by_recency": {
+        "récent": 80.82,
+        "intermédiaire": 82.79,
+        "fondamental": 82.12
+      },
+      "bs_by_qtype": {
+        "factuel": 81.19,
+        "simple": 81.24,
+        "complexe": 84.21,
+        "synthese": 80.07,
+        "comprehension": 80.06
+      },
+      "hall_by_recency": {
+        "récent": 79.81,
+        "intermédiaire": 79.62,
+        "fondamental": 83.77
+      },
+      "hall_by_qtype": {
+        "factuel": 75.08,
+        "simple": 80.88,
+        "complexe": 82.23,
+        "synthese": 82.34,
+        "comprehension": 83.76
+      },
+      "bs_by_dstype": {
+        "juridique": 82.15,
+        "multisauts": 82.56,
+        "technique": 80.36,
+        "temporel": 80.34
+      },
+      "hall_by_dstype": {
+        "juridique": 72.93,
+        "multisauts": 81.48,
+        "technique": 78.78,
+        "temporel": 81.67
+      },
+      "bs_multisauts_simple": 81.24,
+      "bs_multisauts_complexe": 84.21
+    }
+  ]
+}
