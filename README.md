@@ -227,7 +227,7 @@ Notebook **`05_raft.ipynb`** : pour chaque exemple de `train.json`, récupérati
 
 ## 6. Résultats — ~500–700 mots
 
-> **Synchronisation (campagne du 2026-05-04)** : agrégation **`results/final_report.json`** (`generated_at`: 2026-05-04T07:31:49) sur **n = 290** échantillons de test, avec les six JSON `results/*_predictions.json` présents. Après une nouvelle campagne, régénérer le rapport via **`08_evaluation.ipynb`** et recopier les tableaux ci-dessous.
+> **Synchronisation (campagne du 2026-05-04)** : agrégation **`results/final_report.json`** (`generated_at`: 2026-05-04T07:31:49) sur **n = 290** échantillons de test, avec les six JSON `results/*_predictions.json` présents. Les figures §6.6 sont exportées en PNG sous **`results/plots/`** (`fig1_global_metrics.png` … `fig10_ecological_impact.png`) lors de l’exécution de **`08_evaluation.ipynb`**. Après une nouvelle campagne, régénérer le rapport et recopier les tableaux ci-dessous si besoin.
 
 ### 6.1 Tableau comparatif global (toutes les méthodes)
 
