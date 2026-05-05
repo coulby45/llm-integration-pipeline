@@ -16,6 +16,13 @@
 8. Références
 ```
 
+## Mode rédaction rapide
+
+- Rédiger section par section dans l’ordre du document (2 → 8) puis revenir sur le titre.
+- Extraire d’abord les chiffres depuis `results/final_report.json`, puis écrire l’interprétation.
+- Garder chaque sous-section sur un format court : **résultat**, **interprétation**, **limite**.
+- Mettre à jour uniquement les tableaux et figures issus de `08_evaluation.ipynb` avant soumission.
+
 ---
 
 ## 1. Titre
@@ -34,7 +41,7 @@ Variantes :
 
 **Structure** : Contexte → Problème → Méthode → Résultats → Conclusion
 
-> Les LLMs ont une date de coupure (décembre 2023 pour LLaMA 3.1 8B). Nous comparons **six** stratégies d’intégration d’information sur un socle **LLaMA 3.1 8B** : **baseline** (Groq sans contexte), **RAG** (FAISS + Groq), **fine-tuning LoRA** (local), **RAFT** (pseudo-RAG au train + LoRA `lora_adapter_raft`), **RAG + reranking** (cross-encoder multilingue + Groq), et **function calling** (outil `search_docs` + Groq). Corpus **100 % français** (Option B : typiquement **1 200 train / 300 test** sans juridique, ou **1 160 / 290** lorsque le jeu **code_route** est actif — voir §5.2), généré via **Groq** — **biais circulaire** possible à discuter. L’agrégation des métriques (EM, F1, BERTScore, ROUGE-L, **METEOR**, **IC bootstrap 95 %** sur BERTScore / METEOR / F1 / ROUGE-L, hallucination, latence, confiance) se fait dans **`08_evaluation.ipynb`** après exécution ordonnée des notebooks `01`→`08`.
+> Les LLMs ont une date de coupure (décembre 2023 pour LLaMA 3.1 8B). Nous comparons **six** stratégies d’intégration d’information sur un socle **LLaMA 3.1 8B** : **baseline** (Groq sans contexte), **RAG** (FAISS + Groq), **fine-tuning LoRA** (local), **RAFT** (pseudo-RAG au train + LoRA `lora_adapter_raft`), **RAG + reranking** (cross-encoder multilingue + Groq), et **function calling** (outil `search_docs` + Groq). Corpus **100 % français** (Wikipedia, HAL, actualités, code de la route), généré via **Groq** — **biais circulaire** possible à discuter. L’agrégation des métriques (F1, BERTScore, ROUGE-L, **METEOR**, fidélité au contexte, **IC bootstrap 95 %** sur BERTScore / METEOR / F1 / ROUGE-L, hallucination, latence, confiance ; impact écologique estimé et **Fig. 10**) se fait dans **`08_evaluation.ipynb`** après exécution ordonnée des notebooks `01`→`08`.
 
 ---
 
@@ -53,17 +60,17 @@ Variantes :
 - Les évaluations ignorent souvent la **nature du domaine** (technique vs actualités) et la **complexité des questions**
 
 ### 3.3 Contributions de l'article
-1. Construction d'un **corpus 100 % français** (Option B : 1200 train + 300 test) sur 3 domaines distincts avec types de questions variés
+1. Construction d'un **corpus 100 % français** multi-source (Wikipedia, HAL, actualités, code de la route) avec types de questions variés
 2. **Protocole dataset** : génération Q&R via **Groq** (LLaMA 3.1 8B) ; **non indépendant** de l’évaluation → limite méthodologique assumée ou documentée
 3. **Base commune** : toutes les méthodes s’appuient sur la famille **LLaMA 3.1 8B** (Groq API et/ou base quantifiée locale + adaptateurs LoRA) → comparaison équitable à discuter (API vs local)
-4. **Évaluation multi-axe** : EM, F1, BERTScore (CI Bootstrap), ROUGE-L, METEOR, hallucination, latence, écologie
+4. **Évaluation multi-axe** : F1, BERTScore (CI Bootstrap), ROUGE-L, METEOR, **fidélité** (ROUGE-L prédit/contexte), hallucination, latence, écologie (Fig. 10)
 5. **Analyse croisée** méthodes × domaines + comparaison simple vs multi-sauts (HAL)
 6. Résultats empiriques : comparaison **six méthodes** (baseline, RAG, LoRA, RAFT, rerank, function calling) avec discussion **RAG vs rerank** et **coût Groq vs GPU** (LoRA/RAFT)
 7. Pistes : ablations retrieveur, évaluation des **appels d’outils** (précision JSON), évaluation humaine
 8. Recommandations pratiques pour projets IA en français avec contraintes de coût/latence/empreinte carbone
 
 ### 3.4 Plan de l'article
-> La section 2 présente l'état de l'art. La section 3 décrit notre méthodologie et les 3 datasets. Les résultats sont présentés en section 4 et discutés en section 5.
+> La section 2 présente l'état de l'art. La section 3 décrit notre méthodologie et la constitution du corpus (**quatre** types de sources : technique, scientifique HAL, presse, **juridique / code de la route**). Les résultats sont présentés en section 4 et discutés en section 5.
 
 ---
 
@@ -85,7 +92,7 @@ Variantes :
 - FAISS (Johnson et al., 2019) — indexation vectorielle efficace
 - Sentence-Transformers (Reimers & Gurevych, 2019) — embeddings sémantiques
 - **Notre choix** : `paraphrase-multilingual-MiniLM-L12-v2` pour le support FR/EN
-- **Corpus indexé** : documents bruts chunkés (400 mots, overlap 100) depuis `wikipedia_technique.json` + `hal.json` + `lemonde.json` — meilleur que les extraits courts
+- **Corpus indexé** : documents bruts chunkés (200 mots, overlap 50) depuis `wikipedia_technique.json` + `hal.json` + `lemonde.json` + **`code_route.json`** (segments issus du PDF *code de la route*, `dataset_type` **juridique**) — meilleur que les extraits courts
 - Limitations : qualité du retriever, pertinence des chunks, latence ajoutée
 
 ### 4.4 Fine-tuning efficace (PEFT/LoRA)
@@ -100,10 +107,10 @@ Variantes :
 - Function calling / tool use : le LLM décide quand interroger une base documentaire (recherche simulée côté client dans notre pipeline)
 
 ### 4.6 Évaluation des LLMs
-- Exact Match, F1 token-level (Rajpurkar et al., 2016)
+- F1 token-level (Rajpurkar et al., 2016) ; fidélité au passage source (ROUGE-L vs `context` du jeu de test)
 - BERTScore (Zhang et al., 2020) — `distilbert-base-multilingual-cased`
 - ROUGE-L (Lin, 2004)
-- Hallucination proxy : 1 − ROUGE-L(prédit, contexte source) — ✅ calculé en français pour les 3 datasets (HAL = FR, biais éliminé)
+- Hallucination proxy : 1 − ROUGE-L(prédit, contexte source) — ✅ calculé en français pour **tous** les domaines du jeu de test (y compris **juridique / code de la route** ; HAL = FR, biais langue éliminé)
 
 ---
 
@@ -112,13 +119,16 @@ Variantes :
 ### 5.1 Architecture du pipeline
 
 ```
-Wikipedia FR (100 articles)  ──┐  dataset_type = "technique"
-                                │
-HAL.science FR (100 résumés)  ─┼──► LLM Q&R (Groq llama-3.1-8b-instant) ──► train.json (1200)
-                                │   [indépendant de LLaMA 3.1 8B]        ──► test.json  (300)
-                                │
-Actualités FR (100 articles)  ─┘  dataset_type = "temporel"
- (Le Monde / France Info)
+Wikipedia FR (100 articles)      ──┐  dataset_type = "technique"
+                                    │
+HAL.science FR (100 résumés)       ─┼──► LLM Q&R (Groq llama-3.1-8b-instant) ──► train.json
+                                    │   [indépendant de LLaMA 3.1 8B]        ──► test.json
+                                    │
+Actualités FR (100 articles)       ─┤  dataset_type = "temporel"
+ (Le Monde / France Info)           │
+                                    │
+Code de la route (PDF → segments)  ─┘  dataset_type = "juridique"
+ (`code_route.json`, notebook 01)
 
 test.json ──► Baseline (Groq, sans contexte)              — `03` ──► baseline_predictions.json
          ──► RAG (FAISS + Groq)                           — `03` ──► rag_predictions.json
@@ -129,7 +139,7 @@ test.json ──► Baseline (Groq, sans contexte)              — `03` ──�
                                                                               │
                                                          `08_evaluation.ipynb` (agrège les 6 JSON)
                                                                               ▼
-                                              EM / F1 / BERTScore / ROUGE-L / Hallucination / Confiance
+                                              F1 / BERTScore / ROUGE-L / Fidélité / Hallucination / Confiance / Fig. 10 (écologie)
                                               Tableau croisé + figures + `final_report.json`
 ```
 
@@ -140,21 +150,23 @@ test.json ──► Baseline (Groq, sans contexte)              — `03` ──�
 | Technique | Wikipedia FR | 100 | Articles complets (~1600 mots) | `technique` | 5 (2 factuelles, 2 synthèse, 1 compréhension) |
 | Multi-sauts | HAL.science FR (**quotas temporels** sur `submittedDateY_i` : ≤2021 / 2022–2023 / ≥2024, complément large si besoin) | 100 | Résumés enrichis (API `fl=*` + page hal.science, **cible ≥ 40k mots**) | `multisauts` | 5 (3 simples + 2 complexes) |
 | Temporel | Le Monde / France Info | 100 | Article complet scraped (~300 mots) | `temporel` | 5 (2 factuelles, 2 synthèse, 1 compréhension) |
+| **Juridique** | **Code de la route** (PDF officiel → segments ~1400 mots → `data/raw/code_route.json`) | Segments **≥ 20** requis pour quotas Q&R (cible **100 paires** 80/20 si PDF complet) | Texte légal FR, `source` = `code_route_pdf` | **`juridique`** | 5 (même répartition de types de questions que les autres sources) |
 
-**Split figé Option B — 80/20 (seed 42)** : au sein de **chaque** source (Wikipedia, HAL simple, HAL complexe, Le Monde), la division train/test est **stratifiée sur `recency_category`** (répartition ~proportionnelle au pool, méthode du plus grand reste), puis mélange final des listes concaténées.
+**Split 80/20 (seed 42)** : au sein de **chaque** source, la division train/test est **stratifiée sur `recency_category`** (répartition ~proportionnelle au pool, méthode du plus grand reste), puis mélange final des listes concaténées.
 
-| Split | Technique | HAL simple | HAL complexe | Temporel | Total |
-|-------|-----------|------------|--------------|----------|-------|
-| train | 400 | 200 | 200 | 400 | **1200** |
-| test  | 100 |  50 |  50 | 100 |  **300** |
+| Split actuel | Technique | Multisauts | Temporel | Juridique | Total |
+|-------------|-----------|------------|----------|-----------|-------|
+| train | 320 | 360 | 400 | 80 | **1160** |
+| test  |  80 |  90 | 100 | 20 | **290** |
 
-**Run actuel (juridique `code_route` inclus, seed 42)** : `train.json` **1 160** paires (320 technique + 360 multisauts + 400 temporel + 80 juridique) · `test.json` **290** paires (80 + 90 + 100 + 20). Les métriques agrégées dans `results/final_report.json` utilisent **n = 290**.
+Les métriques agrégées dans `results/final_report.json` utilisent **n = 290** sur la campagne courante.
 
 - Génération Q&R : **Groq** `llama-3.1-8b-instant` — **aligné** sur baseline/RAG ; **biais circulaire** possible vs fine-tuning/RAFT (même famille 8B)
 - Prompt avec règle obligatoire : `context` = citation verbatim du texte source (20-150 mots)
 - Champ `recency_category` déduit de la date ISO du document : `récent` (≥2024), `intermédiaire` (2022-2023), `fondamental` (<2022)
 - Fallback automatique : 400 premiers caractères si contexte trop court (<30 caractères)
 - Dataset 100 % français : HAL remplace Arxiv (articles en anglais) pour une cohérence linguistique totale
+- **Code de la route** : corpus **juridique** distinct (réglementation / sanctions / définitions) — indexé dans le **même FAISS** que les autres documents pour le RAG / rerank / FC ; les questions **juridiques** du test servent notamment à mesurer l’effet du retrieveur sur du texte normatif
 
 ### 5.3 Méthode 1 — Baseline
 - Modèle : LLaMA 3.1 8B via Groq API, **aucun contexte externe**
@@ -164,7 +176,7 @@ test.json ──► Baseline (Groq, sans contexte)              — `03` ──�
 ### 5.4 Méthode 2 — RAG
 - Embedding : `paraphrase-multilingual-MiniLM-L12-v2` (dimension 384, FR + EN)
 - Index : FAISS `IndexFlatIP` (cosine similarity sur vecteurs normalisés L2)
-- **Corpus indexé** : documents bruts complets (`wikipedia_technique.json`, `hal.json`, `lemonde.json`) découpés en chunks de 400 mots avec chevauchement de 100 mots
+- **Corpus indexé** : documents bruts complets (`wikipedia_technique.json`, `hal.json`, `lemonde.json`, **`code_route.json`**) découpés en chunks de 200 mots avec chevauchement de 50 mots (le juridique provient des segments PDF *code de la route*)
 - Récupération : top-5 chunks (titre + texte injectés dans le prompt)
 - Génération : LLaMA 3.1 8B via Groq avec contexte enrichi
 
@@ -202,8 +214,8 @@ Notebook **`05_raft.ipynb`** : pour chaque exemple de `train.json`, récupérati
 
 | Métrique | Description | Niveau |
 |----------|-------------|--------|
-| **Exact Match (EM)** | % réponses identiques à la référence (normalisées) | Lexical |
-| **F1 token-level** | Overlap de tokens entre prédiction et référence | Lexical |
+| **Fidélité (faithfulness)** | Moyenne de **ROUGE-L(prédit, contexte)** du `test.json` (repli sur `true_answer` si contexte vide), en % — complémentaire du proxy d’hallucination | Fidélité |
+| **F1 token-level** | Overlap de tokens entre prédiction et **référence** | Lexical |
 | **ROUGE-L** | Plus longue sous-séquence commune | Lexical |
 | **METEOR** | F-mesure sur tokens + synonymes (NLTK WordNet) | Lexical |
 | **BERTScore** | Similarité sémantique (distilbert-base-multilingual) | Sémantique |
@@ -227,18 +239,20 @@ Notebook **`05_raft.ipynb`** : pour chaque exemple de `train.json`, récupérati
 
 ## 6. Résultats — ~500–700 mots
 
-> **Synchronisation (campagne du 2026-05-04)** : agrégation **`results/final_report.json`** (`generated_at`: 2026-05-04T07:31:49) sur **n = 290** échantillons de test, avec les six JSON `results/*_predictions.json` présents. Les figures §6.6 sont exportées en PNG sous **`results/plots/`** (`fig1_global_metrics.png` … `fig10_ecological_impact.png`) lors de l’exécution de **`08_evaluation.ipynb`**. Après une nouvelle campagne, régénérer le rapport et recopier les tableaux ci-dessous si besoin.
+> **Synchronisation** : agrégation depuis **`results/final_report.json`** de la campagne courante, avec les six JSON `results/*_predictions.json`. Les figures de §6.6 sont exportées en PNG sous **`results/plots/`** lors de l’exécution de **`08_evaluation.ipynb`**. Après chaque nouveau run, régénérer le rapport puis mettre à jour les tableaux.
 
 ### 6.1 Tableau comparatif global (toutes les méthodes)
 
-| Méthode | EM (%) | F1 (%) | BERTScore (%) | BS CI 95 % | ROUGE-L (%) | METEOR (%) | Acc@BS 85 % | Hallucin. (%) | Latence (ms) | Vides (%) |
-|---------|:------:|:------:|:-------------:|:----------:|:-----------:|:----------:|:-----------:|:---------------:|:------------:|:---------:|
-| Baseline | 0.0 | 9.3 | 79.7 | [79.31, 80.08] | 8.8 | **22.8** | 8.3 | 85.1 | 565 | 0.0 |
-| RAG | 0.0 | 18.3 | 83.1 | [82.57, 83.60] | 17.0 | 39.0 | 36.6 | 74.2 | 939 | 0.0 |
-| Fine-tuné | 0.0 | 8.0 | 79.4 | [78.99, 79.68] | 7.3 | 21.8 | 4.1 | 90.2 | **17 661** | 0.0 |
-| RAFT | 0.0 | 6.0 | 80.2 | [79.81, 80.52] | 6.0 | 15.8 | 5.2 | **91.0** | **20 625** | **1.4** |
-| **Rerank** | 0.0 | **19.4** | **83.6** | [83.11, 84.10] | **18.2** | 38.0 | **37.9** | **73.9** | 621 | 0.0 |
-| Function calling | 0.0 | 13.5 | 81.2 | [80.61, 81.74] | 12.6 | 30.8 | 21.7 | 80.2 | 927 | 0.0 |
+| Méthode | Fidélité (%) | F1 (%) | BERTScore (%) | BS CI 95 % | ROUGE-L (%) | METEOR (%) | Acc@BS 85 % | Hallucin. (%) | Latence (ms) | Vides (%) |
+|---------|:------------:|:------:|:-------------:|:----------:|:-----------:|:----------:|:-----------:|:---------------:|:------------:|:---------:|
+| Baseline | 14.9 | 9.3 | 79.7 | [79.31, 80.08] | 8.8 | **22.8** | 8.3 | 85.1 | 565 | 0.0 |
+| RAG | 25.8 | 18.3 | 83.1 | [82.57, 83.60] | 17.0 | 39.0 | 36.6 | 74.2 | 939 | 0.0 |
+| Fine-tuné | 9.8 | 8.0 | 79.4 | [78.99, 79.68] | 7.3 | 21.8 | 4.1 | 90.2 | **17 661** | 0.0 |
+| RAFT | 9.0 | 6.0 | 80.2 | [79.81, 80.52] | 6.0 | 15.8 | 5.2 | **91.0** | **20 625** | **1.4** |
+| **Rerank** | **26.1** | **19.4** | **83.6** | [83.11, 84.10] | **18.2** | 38.0 | **37.9** | **73.9** | 621 | 0.0 |
+| Function calling | 19.8 | 13.5 | 81.2 | [80.61, 81.74] | 12.6 | 30.8 | 21.7 | 80.2 | 927 | 0.0 |
+
+*(**Fidélité** : moyenne ROUGE-L(prédit, contexte) alignée sur `08_evaluation` ; régénérer `final_report.json` après exécution du notebook pour exporter aussi ce champ en JSON.)*
 
 *(**Vides** : part des réponses vides ou de moins de 3 caractères, mesurée sur les JSON de prédictions ; quasi nulle sauf RAFT sur ce run.)*
 
@@ -262,7 +276,7 @@ Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter
 
 ### 6.2 BERTScore par domaine × méthode (%)
 
-*(Champ `dataset_type` : **juridique** inclus dans ce run.)*
+*(Colonnes alignées sur les `dataset_type` présents dans `test.json` de la campagne courante.)*
 
 | Méthode | technique | multisauts | temporel | juridique | Moy. 4 domaines |
 |---------|-----------|------------|----------|-----------|-----------------|
@@ -314,7 +328,7 @@ Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter
 
 | Figure | Description |
 |--------|-------------|
-| Fig. 1 | Métriques globales (EM, F1, BERTScore, ROUGE-L) — barres groupées |
+| Fig. 1 | Métriques globales (F1, BERTScore, ROUGE-L, METEOR, fidélité) — barres groupées |
 | Fig. 2 | BERTScore par strate temporelle × méthode |
 | Fig. 3 | BERTScore par type de question × méthode |
 | Fig. 4 | Latences (moy + p95) par méthode |
@@ -343,13 +357,14 @@ Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter
 - Le **fine-tuning seul** sans contexte à l’inférence peine sur le raisonnement croisé si la réponse n’a pas été « mémorisée » dans les poids ; **RAFT** n’améliore pas cette situation sur les métriques rapportées.
 
 ### 7.3 Pourquoi le RAG sur documents bruts est supérieur
+- **Hétérogénéité** : l’index couvre Wikipédia, HAL, presse **et** **Code de la route** (`juridique`) — le retrieveur doit donc aligner questions factuelles, scientifiques, d’actualité et **normatives** ; la colonne **juridique** des tableaux §6.2–6.4 en rend compte.
 - Corpus FAISS sur extraits courts (50-100 mots) → chunks insuffisants pour répondre → RAG pire que baseline
-- Corpus FAISS sur documents complets chunkés (400 mots) → RAG +2.60 pts BERTScore vs baseline (+4.22 pts sur temporel)
+- Corpus FAISS sur documents complets chunkés finement (config retenue: 200/50) → gain de qualité confirmé sur l’ablation chunk (cf. 10_rag_chunk_ablation.ipynb)
 - La qualité du corpus indexé est le facteur déterminant de l'efficacité du RAG
 
 ### 7.4 Limites méthodologiques
 - Dataset généré par **Groq / LLaMA 3.1 8B** : **pas d’indépendance** vis-à-vis de l’inférence baseline/RAG ; biais de **style** et de **couverture** du générateur.
-- Taille **1 160 / 290** (Option B + juridique sur ce dépôt) — classes rares encore peu représentées pour certains croisements méthode × domaine.
+- Taille **1 160 / 290** sur ce dépôt — classes rares encore peu représentées pour certains croisements méthode × domaine.
 - **Alignement train / inférence** : pour LoRA et RAFT, tout écart de gabarit prompt entre entraînement et test peut dégrader les scores ; documenter les gabarits dans l’article.
 - ✅ HAL (FR) : métrique d’hallucination **sans** décalage linguistique anglais/français.
 
@@ -373,7 +388,7 @@ Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter
 
 ## 8. Conclusion — ~200–300 mots
 
-1. **Rappel** : comparer **six** stratégies (baseline, RAG, LoRA, RAFT, rerank, function calling) sur un socle **LLaMA 3.1 8B** et un jeu **100 % français** (Option B).
+1. **Rappel** : comparer **six** stratégies (baseline, RAG, LoRA, RAFT, rerank, function calling) sur un socle **LLaMA 3.1 8B** et un jeu **100 % français**.
 2. **Résultats (§6.1, campagne 2026-05-04, n = 290)** :
    - **Rerank** et **RAG** dominent sur **F1, BERTScore, ROUGE-L** et **hallucination** ; **METEOR** maximal encore côté **RAG** (et partiellement **baseline**).
    - **Fine-tuning LoRA** et **RAFT** : scores lexicaux et fidélité **sous** baseline, latence **~30–35×** ; RAFT avec **sorties vides** ponctuelles.
@@ -423,8 +438,8 @@ Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter
 
 | Notebook | Section article | Produit |
 |----------|-----------------|---------|
-| `01_scraping.ipynb` | §5.2 Constitution du corpus | `wikipedia_technique.json`, `hal.json`, `lemonde.json` |
-| `02_dataset_builder.ipynb` | §5.2 Tableau statistiques | `train.json` (1200), `test.json` (300) — Groq `llama-3.1-8b-instant` |
+| `01_scraping.ipynb` | §5.2 Constitution du corpus | `wikipedia_technique.json`, `hal.json`, `lemonde.json`, **`code_route.json`** (PDF *code de la route* → segments, **juridique**) |
+| `02_dataset_builder.ipynb` | §5.2 Tableau statistiques | `train.json`, `test.json` — Groq `llama-3.1-8b-instant` |
 | `03_baseline_rag.ipynb` | §5.3–5.4 Baseline + RAG + FAISS | `baseline_predictions.json`, `rag_predictions.json`, `models/faiss_index/` |
 | `04_finetuning.ipynb` | §5.5 Fine-tuning LoRA | `finetuned_predictions.json`, `models/lora_adapter_ft/` |
 | `05_raft.ipynb` | §5.5.bis RAFT | `raft_predictions.json`, `models/lora_adapter_raft/` |
@@ -435,11 +450,11 @@ Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter
 
 ---
 
-## État du pipeline — Option B
+## État du pipeline
 
-- [ ] `01` — Scraping : Wikipedia (100), HAL.science FR (100 notices en **3 quotas d’année de dépôt** + complément), Actualités FR (100)
-- [ ] `02` — Dataset builder Groq : 1200 train + 300 test (contextes verbatim, json_repair)
-- [ ] `03` — Baseline (300/300) + RAG avec FAISS sur docs bruts chunkés 400 mots
+- [ ] `01` — Scraping : Wikipedia (100), HAL.science FR (100 notices en **3 quotas d’année de dépôt** + complément), Actualités FR (100), **Code de la route** (PDF → `code_route.json`, segments **juridiques**)
+- [ ] `02` — Dataset builder Groq : train/test (contextes verbatim, json_repair)
+- [ ] `03` — Baseline + RAG avec FAISS sur docs bruts chunkés 200 mots (**index incluant** Wikipedia + HAL + presse + **`code_route.json`**)
 - [ ] `04` — Fine-tuning → `finetuned_predictions.json` + `lora_adapter_ft/`
 - [ ] `05` — RAFT → `raft_predictions.json` + `lora_adapter_raft/`
 - [ ] `06` — RAG + reranking → `rerank_predictions.json`
@@ -463,7 +478,7 @@ Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter
 
 > *Formule : Énergie (Wh) = latence_s × TDP_W × PUE / 3600 · CO2 (g) = Énergie_kWh × intensité*
 
-### Estimations (300 prédictions de test — Option B)
+### Estimations (jeu de test de la campagne courante)
 
 | Méthode | Latence tot. | Énergie (Wh) | CO2 France (g) | CO2/pred (mg) | Ratio vs Baseline |
 |---|---|---|---|---|---|
@@ -474,7 +489,7 @@ Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter
 | RAG + rerank | *(à mesurer)* | — | — | — | — |
 | Function calling | *(à mesurer)* | — | — | — | — |
 
-> *(Estimations extrapolées × 2.5 depuis les 120 prédictions initiales → 300 prédictions Option B, pour les lignes Groq/fine-tuné historiques.)*
+> *(Valeurs à recalculer après chaque nouveau run à partir des latences et tailles de test de la campagne courante.)*
 
 > **Conclusion Green AI** : les méthodes **GPU** (fine-tuné, RAFT) restent coûteuses en latence/énergie vs **API** pour baseline/RAG. Le **reranking** ajoute du calcul local ; le **function calling** peut multiplier les allers-retours API — **mesurer** après le run complet (`08_evaluation.ipynb`).
 
@@ -488,7 +503,7 @@ Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter
 
 ## Résultats clés à retenir pour la rédaction
 
-| Observation | Chiffre (run Option B actuel) | Section |
+| Observation | Chiffre (run actuel) | Section |
 |-------------|-------------------------------|---------|
 | **RAG = meilleure méthode globale** sur F1 / ROUGE / METEOR / BS / Acc@85 | F1 **27.4**, BS **85.0**, Acc@85 **44.7 %** | §6.1 |
 | RAG = meilleure **fidélité** (proxy hallucination le plus bas) | **72.7 %** vs 86.4 baseline | §6.1 |
@@ -496,6 +511,7 @@ Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter
 | Rerank / RAFT / FC : compléter le tableau §6.1 | lignes « — » → `final_report.json` | §6.1 |
 | Alignement gabarit LoRA / RAFT (train vs inférence) | §5.5 / §5.5.bis | §7.4 |
 | Dataset 100 % FR + HAL | pas de biais hallu. cross-langue | §5.2 |
+| **Quatrième source** : juridique (**code de la route** dans le RAG et le test) | segments PDF + `dataset_type` **juridique** | §5.1–5.2, §5.4 |
 | Groq = même modèle que baseline/RAG (génération Q&R) | limite §Discussion | §5.2 |
 | Source LaTeX pour papier | [`article_scientifique.tex`](article_scientifique.tex) | §6.1 bis |
 | Latence / CO2 : ordres de grandeur §6.5 / §7.6 | à actualiser après dernier run **`08_evaluation.ipynb`** | §6.5 |
