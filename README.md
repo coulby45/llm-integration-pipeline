@@ -21,7 +21,7 @@
 - Rédiger section par section dans l’ordre du document (2 → 8) puis revenir sur le titre.
 - Extraire d’abord les chiffres depuis `results/final_report.json`, puis écrire l’interprétation.
 - Garder chaque sous-section sur un format court : **résultat**, **interprétation**, **limite**.
-- Mettre à jour uniquement les tableaux et figures issus de `08_evaluation.ipynb` avant soumission.
+- Mettre à jour les tableaux et figures issus de `09_evaluation.ipynb` ; pour **FT+RAG**, vérifier aussi la présence de `ft_rag_predictions.json` (notebook **`08_ft_plus_rag.ipynb`**).
 
 ---
 
@@ -29,11 +29,11 @@
 
 Proposition principale :
 
-> **Intégration de nouvelles informations dans les LLMs : baseline, RAG, fine-tuning LoRA, RAFT, reranking et function calling sur corpus français hétérogène**
+> **Intégration de nouvelles informations dans les LLMs : baseline, RAG, fine-tuning LoRA, FT+RAG, RAFT, reranking et function calling sur corpus français hétérogène**
 
 Variantes :
 - *Mettre à jour les LLMs sans ré-entraînement : RAG, reranking, function calling vs fine-tuning / RAFT sur données techniques, scientifiques et d'actualité*
-- *Connaissances figées vs connaissances dynamiques : six stratégies d'intégration dans LLaMA 3.1 8B (baseline, RAG, LoRA, RAFT, rerank, function calling)*
+- *Connaissances figées vs connaissances dynamiques : sept stratégies d'intégration dans LLaMA 3.1 8B (baseline, RAG, LoRA, **FT+RAG**, RAFT, rerank, function calling)*
 
 ---
 
@@ -41,7 +41,7 @@ Variantes :
 
 **Structure** : Contexte → Problème → Méthode → Résultats → Conclusion
 
-> Les LLMs ont une date de coupure (décembre 2023 pour LLaMA 3.1 8B). Nous comparons **six** stratégies d’intégration d’information sur un socle **LLaMA 3.1 8B** : **baseline** (Groq sans contexte), **RAG** (FAISS + Groq), **fine-tuning LoRA** (local), **RAFT** (pseudo-RAG au train + LoRA `lora_adapter_raft`), **RAG + reranking** (cross-encoder multilingue + Groq), et **function calling** (outil `search_docs` + Groq). Corpus **100 % français** (Wikipedia, HAL, actualités, code de la route), généré via **Groq** — **biais circulaire** possible à discuter. L’agrégation des métriques (F1, BERTScore, ROUGE-L, **METEOR**, fidélité au contexte, **IC bootstrap 95 %** sur BERTScore / METEOR / F1 / ROUGE-L, hallucination, latence, confiance ; impact écologique estimé et **Fig. 10**) se fait dans **`08_evaluation.ipynb`** après exécution ordonnée des notebooks `01`→`08`.
+> Les LLMs ont une date de coupure (décembre 2023 pour LLaMA 3.1 8B). Nous comparons **sept** stratégies d’intégration d’information sur un socle **LLaMA 3.1 8B** : **baseline** (Groq sans contexte), **RAG** (FAISS + Groq), **fine-tuning LoRA** (local), **FT+RAG** (adaptateur `lora_adapter_ft` + même index FAISS que le RAG — notebook **`08_ft_plus_rag.ipynb`**), **RAFT** (pseudo-RAG au train + LoRA `lora_adapter_raft`), **RAG + reranking** (cross-encoder multilingue + Groq), et **function calling** (outil `search_docs` + Groq). Corpus **100 % français** (Wikipedia, HAL, actualités, code de la route). Une **notation subjective complémentaire** (LLM-as-judge 1–5 : cohérence, utilité, fidélité) est disponible via **`10_llm_as_judge.ipynb`** puis **`11_llm_judge_analysis.ipynb`**. L’agrégation **objective** (F1, BERTScore, ROUGE-L, **METEOR**, fidélité au contexte, **IC bootstrap 95 %**, hallucination, latence, confiance ; impact écologique et **Fig. 10**) se fait dans **`09_evaluation.ipynb`** après génération des `*_predictions.json` (notebooks `03`→`08`, incl. **`08_ft_plus_rag.ipynb`** si FT+RAG).
 
 ---
 
@@ -65,7 +65,7 @@ Variantes :
 3. **Base commune** : toutes les méthodes s’appuient sur la famille **LLaMA 3.1 8B** (Groq API et/ou base quantifiée locale + adaptateurs LoRA) → comparaison équitable à discuter (API vs local)
 4. **Évaluation multi-axe** : F1, BERTScore (CI Bootstrap), ROUGE-L, METEOR, **fidélité** (ROUGE-L prédit/contexte), hallucination, latence, écologie (Fig. 10)
 5. **Analyse croisée** méthodes × domaines + comparaison simple vs multi-sauts (HAL)
-6. Résultats empiriques : comparaison **six méthodes** (baseline, RAG, LoRA, RAFT, rerank, function calling) avec discussion **RAG vs rerank** et **coût Groq vs GPU** (LoRA/RAFT)
+6. Résultats empiriques : comparaison **sept méthodes** (baseline, RAG, LoRA, **FT+RAG**, RAFT, rerank, function calling) avec discussion **RAG vs rerank**, **FT+RAG vs RAG**, et **coût Groq vs GPU** (LoRA / RAFT / FT+RAG)
 7. Pistes : ablations retrieveur, évaluation des **appels d’outils** (précision JSON), évaluation humaine
 8. Recommandations pratiques pour projets IA en français avec contraintes de coût/latence/empreinte carbone
 
@@ -132,12 +132,13 @@ Code de la route (PDF → segments)  ─┘  dataset_type = "juridique"
 
 test.json ──► Baseline (Groq, sans contexte)              — `03` ──► baseline_predictions.json
          ──► RAG (FAISS + Groq)                           — `03` ──► rag_predictions.json
-         ──► Fine-tuning LoRA                             — `04` ──► finetuned_predictions.json
+         ──► Fine-tuning LoRA                             — `04` ──► finetuned_predictions.json + `models/lora_adapter_ft/`
+         ──► FT+RAG (LoRA fine-tuné + FAISS + inférence locale) — `08` ──► ft_rag_predictions.json
          ──► RAFT (pseudo-RAG au train, LoRA dédié)        — `05` ──► raft_predictions.json + `models/lora_adapter_raft/`
          ──► RAG + reranking (cross-encoder + Groq)       — `06` ──► rerank_predictions.json
          ──► Function calling (outil search_docs + Groq) — `07` ──► function_calling_predictions.json
                                                                               │
-                                                         `08_evaluation.ipynb` (agrège les 6 JSON)
+                                                         `09_evaluation.ipynb` (agrège les 7 JSON)
                                                                               ▼
                                               F1 / BERTScore / ROUGE-L / Fidélité / Hallucination / Confiance / Fig. 10 (écologie)
                                               Tableau croisé + figures + `final_report.json`
@@ -198,7 +199,7 @@ Notebook **`05_raft.ipynb`** : pour chaque exemple de `train.json`, récupérati
 - **Ne pas** optimiser sur le jeu **test** final : réserver une petite **validation** (par ex. 10 % de `train.json`, seed fixe) ou une métrique **validation loss** pendant l’entraînement.
 - **Grille simple** : faire varier **une dimension à la fois** — `lr` (ex. `5e-5`, `1e-4`, `2e-4`), **nombre d’époques** (3–8), **rank LoRA** (16 vs 32), **warmup** ; garder le reste identique (seed, batch effectif).
 - **Critère** : pertinence du projet — perte de validation la plus basse, ou **BERTScore / F1 sur la validation** si vous régénérez des réponses sur ce sous-ensemble (plus coûteux).
-- Une fois les meilleurs hyperparamètres fixés, **un seul** entraînement sur tout `train.json`, puis évaluation **une fois** sur `test.json` via **`08_evaluation.ipynb`** (après exécution des notebooks `03`–`07`).
+- Une fois les meilleurs hyperparamètres fixés, **un seul** entraînement sur tout `train.json`, puis évaluation **une fois** sur `test.json` via **`09_evaluation.ipynb`** (après exécution des notebooks de prédictions `03`–`08` si FT+RAG est utilisé, sinon `03`–`07` suffisent avant l’agrégation).
 
 ### 5.6 Méthode 5 — RAG + reranking
 - Même index FAISS que le RAG ; récupération **élargie** (top-M candidats) puis **cross-encoder** multilingue (`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`) pour ne garder que les **top-k** passages.
@@ -231,7 +232,7 @@ Notebook **`05_raft.ipynb`** : pour chaque exemple de `train.json`, récupérati
 | **Énergie (Wh)** | Latence × TDP hardware × PUE datacenter / 3600 | Écologique |
 | **CO2eq (gCO2eq)** | Énergie × intensité carbone (France : 52 / Mondial : 475 gCO2/kWh) | Écologique |
 
-*(Tableau principal et agrégation des six méthodes : `08_evaluation.ipynb` + les six fichiers `*_predictions.json`.)*
+*(Tableau principal et agrégation des **sept** méthodes : `09_evaluation.ipynb` + les sept fichiers `*_predictions.json`, incluant `ft_rag_predictions.json`.)*
 
 ✅ *Avec HAL (articles 100 % français), le biais de la métrique d'hallucination présent avec Arxiv (contexte EN vs réponse FR) est éliminé. Le ROUGE-L(prédit, contexte source) est maintenant calculé dans la même langue pour tous les exemples.*
 
@@ -239,92 +240,100 @@ Notebook **`05_raft.ipynb`** : pour chaque exemple de `train.json`, récupérati
 
 ## 6. Résultats — ~500–700 mots
 
-> **Synchronisation** : agrégation depuis **`results/final_report.json`** de la campagne courante, avec les six JSON `results/*_predictions.json`. Les figures de §6.6 sont exportées en PNG sous **`results/plots/`** lors de l’exécution de **`08_evaluation.ipynb`**. Après chaque nouveau run, régénérer le rapport puis mettre à jour les tableaux.
+> **Synchronisation** : agrégation depuis **`results/final_report.json`** de la campagne courante, avec les **sept** JSON `results/*_predictions.json` (dont **`ft_rag_predictions.json`**). Les figures de §6.6 sont exportées en PNG sous **`results/plots/`** lors de l’exécution de **`09_evaluation.ipynb`**. Après chaque nouveau run, régénérer le rapport puis mettre à jour les tableaux.
 
 ### 6.1 Tableau comparatif global (toutes les méthodes)
 
-| Méthode | Fidélité (%) | F1 (%) | BERTScore (%) | BS CI 95 % | ROUGE-L (%) | METEOR (%) | Acc@BS 85 % | Hallucin. (%) | Latence (ms) | Vides (%) |
-|---------|:------------:|:------:|:-------------:|:----------:|:-----------:|:----------:|:-----------:|:---------------:|:------------:|:---------:|
-| Baseline | 14.9 | 9.3 | 79.7 | [79.31, 80.08] | 8.8 | **22.8** | 8.3 | 85.1 | 565 | 0.0 |
-| RAG | 25.8 | 18.3 | 83.1 | [82.57, 83.60] | 17.0 | 39.0 | 36.6 | 74.2 | 939 | 0.0 |
-| Fine-tuné | 9.8 | 8.0 | 79.4 | [78.99, 79.68] | 7.3 | 21.8 | 4.1 | 90.2 | **17 661** | 0.0 |
-| RAFT | 9.0 | 6.0 | 80.2 | [79.81, 80.52] | 6.0 | 15.8 | 5.2 | **91.0** | **20 625** | **1.4** |
-| **Rerank** | **26.1** | **19.4** | **83.6** | [83.11, 84.10] | **18.2** | 38.0 | **37.9** | **73.9** | 621 | 0.0 |
-| Function calling | 19.8 | 13.5 | 81.2 | [80.61, 81.74] | 12.6 | 30.8 | 21.7 | 80.2 | 927 | 0.0 |
+Campagne **`final_report.json`** généré le **2026-05-06**, **n = 290**.
 
-*(**Fidélité** : moyenne ROUGE-L(prédit, contexte) alignée sur `08_evaluation` ; régénérer `final_report.json` après exécution du notebook pour exporter aussi ce champ en JSON.)*
+| Méthode | Fidélité (%) | F1 (%) | BERTScore (%) | BS CI 95 % | ROUGE-L (%) | METEOR (%) | Acc@BS 85 % | Hallucin. (%) | Latence (ms) |
+|---------|:------------:|:------:|:-------------:|:----------:|:-----------:|:----------:|:-----------:|:---------------:|:------------:|
+| Baseline | 16.5 | 16.3 | 81.4 | [81.11, 81.72] | 13.7 | 34.5 | 9.7 | 83.5 | **549** |
+| RAG | 31.8 | 32.8 | 85.8 | [85.22, 86.23] | 28.7 | 52.4 | 54.5 | 68.2 | 599 |
+| Fine-tuné | 12.7 | 14.8 | 81.4 | [81.08, 81.64] | 11.6 | 35.5 | 6.2 | 87.3 | 14 217 |
+| **FT+RAG** | 13.1 | 14.6 | 81.0 | [80.69, 81.27] | 11.7 | 35.8 | 5.9 | 86.9 | **18 976** |
+| RAFT | 11.6 | 11.9 | 81.2 | [80.94, 81.54] | 10.1 | 26.3 | 4.8 | **88.4** | **21 224** |
+| **Rerank** | **33.8** | **36.5** | **86.6** | [86.05, 87.12] | **32.1** | **56.1** | **60.7** | **66.2** | 570 |
+| Function calling | 24.2 | 23.9 | 83.4 | [82.86, 83.89] | 20.9 | 44.6 | 31.4 | 75.8 | 1 078 |
 
-*(**Vides** : part des réponses vides ou de moins de 3 caractères, mesurée sur les JSON de prédictions ; quasi nulle sauf RAFT sur ce run.)*
+*(**Fidélité** : moyenne ROUGE-L(prédit, `context` du test) ; exportée dans `final_report.json`.)*
 
 #### Faits saillants (même campagne)
 
-- **Rerank** devance légèrement le **RAG** sur **F1**, **BERTScore**, **ROUGE-L** et le proxy d’**hallucination** ; le **RAG** reste meilleur sur **METEOR** (~+1 pt). Latence **Rerank &lt; RAG** (~621 ms vs ~939 ms) sur ce matériel — prompts probablement plus courts après re-classement des passages.
-- **Baseline** : METEOR le plus haut hors méthodes retrieval — paradoxe fréquent quand les réponses longues et génériques chevauchent le vocabulaire de la référence sans être factuellement proches (**F1 / ROUGE** faibles).
-- **Fine-tuné** et **RAFT** : **F1** et **ROUGE** sous baseline, **hallucination** la plus élevée, latences **×30–36** vs baseline (inférence locale + décodage long). **RAFT** : **METEOR** le plus bas des six ; quelques sorties vides.
-- **Function calling** : scores intermédiaires ; **36 / 290** réponses avec `tool_native_failed_or_skipped` (repli FAISS sur la question sans outil Groq valide au tour 1, ou exception au tour 2 — voir `07_function_calling.ipynb`).
+- **Rerank** domine les métriques **lexicales / sémantiques automatiques** (F1, BERTScore, ROUGE-L, **METEOR**, Acc@85, fidélité, hallucination) avec une latence API **du même ordre que la baseline** (~570 ms).
+- **RAG** reste **très proche** du rerank sur la plupart des axes (notamment **METEOR** et découpes par domaine) ; **FT+RAG** **ne rattrape pas** le RAG ni le rerank — scores proches du **fine-tuné seul**, avec une **latence encore plus élevée** (LoRA local + décodage long + retrieval).
+- **Fine-tuné**, **FT+RAG** et **RAFT** : **BERTScore** plateau ~81 % (vs ~86 % rerank) ; **hallucination** (proxy) **supérieure à la baseline** ; inférence locale **×26–39×** plus lente que la baseline.
+- **RAFT** : **METEOR** le plus bas des sept ; **F1** et **ROUGE-L** sous baseline — le protocole RAFT + décodeur Unsloth ne se traduit pas par un gain sur ce benchmark.
+- **Function calling** : entre **baseline** et **RAG** ; latence modérée (~1,1 s) pour un flux **deux passages** Groq.
 
 ### 6.1 bis Patterns qualitatifs (exploration des `*_predictions.json`)
 
 - **Ancrage lexical** : le **RAG** et le **Rerank** produisent souvent des formulations du type *« selon … »* ou des références explicites aux **extraits** (*« contexte »*, *« document »*), beaucoup plus que la **baseline** — cohérent avec l’injection de passages chunkés.
-- **Longueur moyenne (mots / réponse)** : **Fine-tuné ~144** &gt; **Function calling ~130** &gt; **Baseline ~118** &gt; **RAG ~110** &gt; **Rerank ~74** &gt; **RAFT ~70** — les deux méthodes **rerank** et **RAFT** sont les plus courtes ; le **RAFT** combine des réponses très courtes avec quelques **vides**.
+- **Longueur des réponses (Fig. 17)** : **FT+RAG** tend à produire les réponses **les plus longues** (médiane élevée) ; **Rerank** et **RAFT** restent **plus courts** — la longueur seule n’explique pas la qualité BERTScore (ex. rerank court mais meilleur score).
 - **Hésitation** : préfixes du type *« je ne … »* (refus / manque d’information) plus fréquents en **baseline** qu’avec **RAG / rerank** — la récupération réduit les refus explicites sur ce jeu.
 - **Aucune identité brute** : **0** paires où la réponse **RAG** est strictement identique à la **baseline** (les passages modifient systématiquement le texte généré sur les 290 items).
 
 ### 6.1 ter Article LaTeX
 
-Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter depuis `final_report.json`) est dans [`article_scientifique.tex`](article_scientifique.tex) ; à compiler avec `pdflatex` / `latexmk` et à enrichir (figures, bibliographie complète).
+Un squelette **LaTeX** (résumé, **sept** méthodes — à synchroniser avec FT+RAG — tableau principal à compléter depuis `final_report.json`) est dans [`article_scientifique.tex`](article_scientifique.tex) ; à compiler avec `pdflatex` / `latexmk` et à enrichir (figures, bibliographie complète).
 
 ### 6.2 BERTScore par domaine × méthode (%)
 
-*(Colonnes alignées sur les `dataset_type` présents dans `test.json` de la campagne courante.)*
+*(Colonnes = `dataset_type` dans `test.json`, campagne 2026-05-06.)*
 
 | Méthode | technique | multisauts | temporel | juridique | Moy. 4 domaines |
 |---------|-----------|------------|----------|-----------|-----------------|
-| Baseline | 80.6 | 80.5 | 78.3 | 79.4 | 79.7 |
-| RAG | 83.3 | 84.2 | 82.3 | 81.0 | 82.7 |
-| Fine-tuné | 79.4 | 79.7 | 79.1 | 79.0 | 79.3 |
-| RAFT | 81.0 | 80.4 | 79.5 | 79.3 | 80.0 |
-| Rerank | 82.5 | 85.1 | 83.0 | 84.1 | 83.7 |
-| Function calling | 80.4 | 82.6 | 80.3 | 82.2 | 81.4 |
+| Baseline | 82.0 | 81.8 | 80.5 | 81.7 | 81.5 |
+| RAG | 85.9 | 86.9 | 84.9 | 84.5 | 85.6 |
+| Fine-tuné | 82.0 | 81.4 | 81.1 | 80.2 | 81.2 |
+| FT+RAG | 80.8 | 81.1 | 81.2 | 80.2 | 80.8 |
+| RAFT | 81.3 | 81.6 | 81.1 | 80.0 | 81.0 |
+| **Rerank** | **86.6** | **87.2** | **86.3** | **85.2** | **86.3** |
+| Function calling | 83.5 | 83.7 | 83.0 | 83.6 | 83.5 |
 
 ### 6.3 BERTScore par type de question (%)
 
 | Méthode | factuel | synthese | comprehension | simple (HAL) | complexe (HAL) |
 |---------|---------|----------|---------------|--------------|----------------|
-| Baseline | 79.5 | 79.2 | 79.1 | 78.5 | 83.0 |
-| RAG | 83.1 | 82.6 | 81.7 | 82.1 | **86.8** |
-| Fine-tuné | 78.2 | 79.7 | 80.4 | 77.5 | 82.3 |
-| RAFT | 79.7 | 80.2 | 80.6 | 80.8 | 79.9 |
-| Rerank | 82.9 | 83.0 | 82.7 | 83.5 | 87.1 |
-| Function calling | 81.2 | 80.1 | 80.1 | 81.2 | 84.2 |
+| Baseline | 82.0 | 80.7 | 80.9 | 81.9 | 81.7 |
+| RAG | 86.4 | 83.7 | 85.8 | 88.5 | 84.9 |
+| Fine-tuné | 81.3 | 81.6 | 80.9 | 81.0 | 81.8 |
+| FT+RAG | 80.5 | 81.3 | 81.2 | 80.2 | 82.1 |
+| RAFT | 81.0 | 81.4 | 80.9 | 82.1 | 80.9 |
+| **Rerank** | **88.5** | **84.4** | **85.5** | **89.0** | **85.0** |
+| Function calling | 84.5 | 82.0 | 83.2 | 83.9 | 83.4 |
 
-> **HAL** : pour le **RAG** et le **Rerank**, le **complexe** dépasse encore le **simple** (BERTScore) ; le **RAFT** inverse l’écart (complexe plus bas que simple).
+> **HAL** : **Rerank** et **RAG** tirent encore parti du **multi-sauts** ; **FT+RAG** reste ~5 points sous **RAG** sur le **factuel**.
 
 ### 6.4 Hallucination (proxy) par domaine (%)
 
+*(Plus bas = mieux ; 100 × (1 − ROUGE-L(prédit, contexte source)).)*
+
 | Méthode | technique | temporel | multisauts | juridique |
 |---------|-----------|----------|-------------|-----------|
-| Baseline | 80.5 | 88.1 | 86.4 | 82.9 |
-| RAG | 71.6 | 76.6 | 74.1 | 72.9 |
-| Fine-tuné | 90.2 | 91.2 | 89.6 | 87.6 |
-| RAFT | 90.9 | 91.6 | 91.2 | 87.9 |
-| Rerank | 73.2 | 77.8 | 72.0 | **65.8** |
-| Function calling | 78.8 | 81.7 | 81.5 | 72.9 |
+| Baseline | 80.2 | 86.4 | 84.2 | 79.5 |
+| RAG | 67.5 | 73.4 | 63.7 | 66.1 |
+| Fine-tuné | 85.7 | 87.7 | 88.0 | **88.6** |
+| FT+RAG | 86.5 | 86.8 | 87.2 | 87.9 |
+| RAFT | 88.4 | 88.6 | 87.2 | **92.8** |
+| **Rerank** | **63.0** | **71.5** | **63.5** | **64.3** |
+| Function calling | 73.9 | 78.5 | 76.2 | 69.0 |
 
-> Le **juridique** obtient le proxy d’hallucination **le plus bas** en **Rerank** sur ce run — effet probable d’une meilleure adéquation passage–question après cross-encoder.
+> **Rerank** minimise le proxy sur **technique** et **multisauts** ; le **juridique** reste difficile pour toutes les méthodes **hors retrieval** (fine-tuné, RAFT, FT+RAG).
 
 ### 6.5 Analyse latence
 
 | Méthode | Latence moy. (ms) | Ratio vs Baseline |
 |---------|-------------------|-------------------|
-| Baseline | 565 | ×1.0 |
-| Rerank | 621 | ×1.1 |
-| Function calling | 927 | ×1.6 |
-| RAG | 939 | ×1.7 |
-| Fine-tuné | 17 661 | ×31.3 |
-| RAFT | 20 625 | ×36.5 |
+| Baseline | 549 | ×1.0 |
+| **Rerank** | **570** | ×1.04 |
+| RAG | 599 | ×1.09 |
+| Function calling | 1 078 | ×2.0 |
+| Fine-tuné | 14 217 | ×25.9 |
+| FT+RAG | 18 976 | ×34.6 |
+| RAFT | 21 224 | ×38.7 |
 
-### 6.6 Figures produites par `08_evaluation.ipynb`
+### 6.6 Figures produites par `09_evaluation.ipynb`
 
 | Figure | Description |
 |--------|-------------|
@@ -339,27 +348,51 @@ Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter
 | Fig. 9 | **Accuracy par seuil BERTScore** (≥80%, ≥85%, ≥90%) |
 | Fig. 10 | **Impact écologique** — énergie (Wh), CO2 France vs mondial, CO2/prédiction |
 
+### 6.7 Évaluation subjective — LLM-as-judge (Anthropic)
+
+**Protocole** : notebook **`10_llm_as_judge.ipynb`** ; agrégation **`results/llm_judge_anthropic_all_methods.json`** ; figures **`results/plots/fig_judge_*.png`** et tableau **`results/llm_judge_summary_table.csv`** (voir aussi **`11_llm_judge_analysis.ipynb`**).
+
+**Juge** : `claude-sonnet-4-6` ; scores **1–5** (cohérence, utilité, fidélité au contexte). Moyennes **sur n = 290** par fichier de prédictions :
+
+| Rang | Méthode (label fichier) | Cohérence | Utilité | Fidélité | Composite* |
+|:----:|-------------------------|:---------:|:-------:|:--------:|:------------:|
+| 1 | `rerank` | **3.93** | **3.66** | **3.57** | **~3.72** |
+| 2 | `rag` | 3.68 | 3.31 | 3.29 | ~3.43 |
+| 3 | `function_calling` | 3.21 | 2.74 | 2.48 | ~2.81 |
+| 4 | `baseline` | 2.46 | 1.72 | 1.37 | ~1.85 |
+| 5 | `ft_rag` | 2.00 | 1.79 | 1.55 | ~1.78 |
+| 6 | `finetuned` | 2.02 | 1.61 | 1.25 | ~1.63 |
+| 7 | `raft` | 1.63 | 1.53 | 1.28 | ~1.48 |
+
+\*Composite = moyenne arithmétique des trois critères (non présente telle quelle dans le JSON).
+
+**Observations juge vs métriques auto** : le classement **rerank > RAG > function calling > baseline** est **aligné** avec le tableau §6.1. **FT+RAG** se situe **au niveau de la baseline** en composite juge — cohérent avec un **BERTScore** proche du fine-tuné **sans** atteindre le niveau **RAG/rerank**. **RAFT** est **dernier** des deux côtés.
+
+**Limite** : lorsque le juge renvoie du JSON **entouré de balises Markdown**, certaines lignes peuvent être marquées `parse_error` dans le détail — prévoir un post-traitement ou des retries si l’on durcit le protocole.
+
 ---
 
 ## 7. Discussion — ~500–600 mots
 
-### 7.1 Quelle méthode pour quel domaine ? *(croisé avec §6.2–6.4, campagne 2026-05-04)*
+### 7.1 Quelle méthode pour quel domaine ? *(croisé avec §6.2–6.4, campagne 2026-05-06)*
 
-- **Rerank** et **RAG** : meilleurs compromis **qualité / hallucination** ; le **rerank** l’emporte sur **F1, BERTScore, ROUGE-L** et latence, le **RAG** sur **METEOR**.
-- **Fine-tuné** : **ne surpasse pas la baseline** sur F1 / ROUGE / hallucination dans ce run — sensibilité au format, au décodage et à la quantification locale vs API.
-- **RAFT** : **F1** et **METEOR** les plus bas des six ; hypothèse « contexte + distracteurs » **non** reflétée par un gain sur ce protocole et ce décodeur.
-- **Function calling** : qualité **entre** baseline et RAG ; surveiller le **taux de repli** sans outil natif (~12 % sur ce run) et la latence vs RAG direct.
-- **Baseline** : référence sans documents ; **METEOR** élevé malgré **F1** faible (voir §6.1 bis).
+- **Rerank** et **RAG** : meilleurs compromis **qualité automatique / hallucination (proxy)** ; le **rerank** l’emporte sur **F1, BERTScore, ROUGE-L, METEOR** et **Acc@85** dans ce run.
+- **FT+RAG** : **ne combine pas** ici les forces du fine-tuné et du RAG — scores proches du **fine-tuné seul**, **BERTScore** nettement sous **RAG**, **latence** parmi les plus élevées (GPU + retrieval + décodage). **Pistes** : gabarit prompt / distribution train vs prompts RAG, calibration du retrieveur avec le décodeur LoRA, ou conflit entre style SFT et format « passages injectés ».
+- **Fine-tuné** : **ne surpasse pas la baseline** sur F1 / hallucination proxy dans ce run — sensibilité au format Alpaca, à la quantification locale et au décodage vs API Groq.
+- **RAFT** : **F1** et **METEOR** les plus bas des sept ; l’hypothèse « contexte + distracteurs » ne se traduit pas par un gain sur ce protocole.
+- **Function calling** : qualité **entre** baseline et RAG ; utile pour étudier un **flux agentif** au prix d’une latence **~2×** baseline.
+- **Baseline** : référence sans documents ; utile comme **plancher de latence** et de complexité.
 
 ### 7.2 Impact de la complexité des questions
 
 - Les questions **HAL complexes** restent favorisées par le **RAG** et le **Rerank** en BERTScore vs les **simples** (§6.3) — le retrieveur dense + re-classement semble aider le raisonnement multi-passages.
 - Le **fine-tuning seul** sans contexte à l’inférence peine sur le raisonnement croisé si la réponse n’a pas été « mémorisée » dans les poids ; **RAFT** n’améliore pas cette situation sur les métriques rapportées.
+- **FT+RAG** : sur le **factuel**, le **BERTScore** reste **plus bas** que celui du **RAG** — ajouter des passages ne compense pas ici l’écart de distribution **SFT vs prompt Groq** ; pistes : ré-écrire le gabarit d’inférence pour coller au train Alpaca, ou **fusionner** scores rerank + logits adaptateur (hors scope actuel).
 
 ### 7.3 Pourquoi le RAG sur documents bruts est supérieur
 - **Hétérogénéité** : l’index couvre Wikipédia, HAL, presse **et** **Code de la route** (`juridique`) — le retrieveur doit donc aligner questions factuelles, scientifiques, d’actualité et **normatives** ; la colonne **juridique** des tableaux §6.2–6.4 en rend compte.
-- Corpus FAISS sur extraits courts (50-100 mots) → chunks insuffisants pour répondre → RAG pire que baseline
-- Corpus FAISS sur documents complets chunkés finement (config retenue: 200/50) → gain de qualité confirmé sur l’ablation chunk (cf. 10_rag_chunk_ablation.ipynb)
+- Corpus FAISS sur extraits trop courts → retrieval **insuffisant** pour répondre → RAG peut dégrader vs baseline.
+- Corpus FAISS sur documents complets chunkés (**200 mots, overlap 50**, compromis issu d’une **étude d’ablation** sur tailles de chunks) → meilleure couverture que des fenêtres trop petites.
 - La qualité du corpus indexé est le facteur déterminant de l'efficacité du RAG
 
 ### 7.4 Limites méthodologiques
@@ -380,6 +413,7 @@ Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter
 | Baseline | Très faible | Instantanée | Données stables pré-coupure |
 | RAG | Faible | Instantanée (réindexation) | Données fraîches changeantes |
 | Fine-tuné | Élevé (GPU) | Coûteuse (ré-entraîner) | Domaine spécialisé stable |
+| **FT+RAG** | **Très élevé (GPU + index)** | Réindexation + ré-entraînement LoRA | Expérimental — à valider si synergie réelle prompt/train |
 | RAFT | Élevé (GPU) | Coûteuse | Quand le format « contexte + distracteurs » est central |
 | RAG + rerank | Moyen (API + rerank local) | Réindexation + même rerank | Qualité retrieveur limite le RAG seul |
 | Function calling | Moyen (API, boucles possibles) | Réindexation + schéma outil | Contrôle explicite des recherches |
@@ -388,15 +422,14 @@ Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter
 
 ## 8. Conclusion — ~200–300 mots
 
-1. **Rappel** : comparer **six** stratégies (baseline, RAG, LoRA, RAFT, rerank, function calling) sur un socle **LLaMA 3.1 8B** et un jeu **100 % français**.
-2. **Résultats (§6.1, campagne 2026-05-04, n = 290)** :
-   - **Rerank** et **RAG** dominent sur **F1, BERTScore, ROUGE-L** et **hallucination** ; **METEOR** maximal encore côté **RAG** (et partiellement **baseline**).
-   - **Fine-tuning LoRA** et **RAFT** : scores lexicaux et fidélité **sous** baseline, latence **~30–35×** ; RAFT avec **sorties vides** ponctuelles.
-   - **Function calling** : intermédiaire ; repli sans outil natif sur **~12 %** des questions.
-3. **Recommandations provisoires** :
-   - Priorité **qualité + fraîcheur documentaire** → **RAG + rerank** si le cross-encoder est acceptable, sinon **RAG** seul (légèrement meilleur METEOR).
-   - **Function calling** pour analyser un **flux agentif** ou des politiques de recherche conditionnelle, au prix d’une qualité moindre que le RAG direct sur ce benchmark.
-4. **Perspectives** : évaluation humaine, ablations retrieveur, mesure du **taux d’erreurs d’outil**, retrieveurs plus riches (DPR/ColBERT).
+1. **Rappel** : comparer **sept** stratégies (baseline, RAG, LoRA, **FT+RAG**, RAFT, rerank, function calling) sur un socle **LLaMA 3.1 8B** et un jeu **100 % français**.
+2. **Résultats (§6.1, campagne 2026-05-06, n = 290)** :
+   - **Rerank** domine les métriques **automatiques** (dont **METEOR**) ; **RAG** reste le **second meilleur** compromis global.
+   - **FT+RAG** : **pas de synergie observée** — performances proches du **fine-tuné**, nettement sous **RAG/rerank**, **latence** très élevée (GPU + retrieval).
+   - **Fine-tuning LoRA** et **RAFT** : scores lexicaux et fidélité **sous** baseline sur plusieurs indicateurs ; latence **~26–39×** baseline.
+   - **Function calling** : **entre** baseline et RAG ; utile pour modéliser un **agent** avec recherche conditionnelle.
+3. **LLM-as-judge (§6.7)** : ordre **rerank > rag > function calling > baseline ≈ ft_rag > finetuned > raft**, cohérent avec les métriques **BERTScore / F1**.
+4. **Perspectives** : harmoniser **prompt/gabarit** pour FT+RAG, évaluation humaine, ablations retrieveur, gestion stricte des **réponses JSON** du juge, retrieveurs plus riches (DPR/ColBERT).
 
 ---
 
@@ -445,8 +478,11 @@ Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter
 | `05_raft.ipynb` | §5.5.bis RAFT | `raft_predictions.json`, `models/lora_adapter_raft/` |
 | `06_rag_rerank.ipynb` | §5.6 RAG + reranking | `rerank_predictions.json` |
 | `07_function_calling.ipynb` | §5.7 Function calling | `function_calling_predictions.json` |
-| `08_evaluation.ipynb` | §6 Résultats | `final_report.json`, figures PNG |
-| `article_scientifique.tex` | §6.1 bis + rédaction complète | PDF article ( compilation `pdflatex` ) |
+| `08_ft_plus_rag.ipynb` | §5 FT+RAG | `ft_rag_predictions.json` (LoRA `lora_adapter_ft` + FAISS) |
+| `09_evaluation.ipynb` | §6 Résultats | `final_report.json`, figures PNG (**7 méthodes**) |
+| `10_llm_as_judge.ipynb` | §6.7 | `llm_judge_<provider>_*.json`, `fig_judge_compare_*.png` |
+| `11_llm_judge_analysis.ipynb` | §6.7 | `llm_judge_summary_table.csv`, `fig_judge_*.png` |
+| `article_scientifique.tex` | §6.1 bis + rédaction complète | PDF article (compilation `pdflatex`) |
 
 ---
 
@@ -459,7 +495,9 @@ Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter
 - [ ] `05` — RAFT → `raft_predictions.json` + `lora_adapter_raft/`
 - [ ] `06` — RAG + reranking → `rerank_predictions.json`
 - [ ] `07` — Function calling → `function_calling_predictions.json`
-- [ ] `08` — Évaluation agrégée (6 méthodes) → `final_report.json` + figures
+- [ ] `08` — FT+RAG → `ft_rag_predictions.json` (adapter §04 + index §03)
+- [ ] `09` — Évaluation agrégée (**7 méthodes**) → `final_report.json` + figures
+- [ ] `10`–`11` — (optionnel) LLM-as-judge + analyses figures dédiées
 - [ ] Figures 1–10 sauvegardées et vérifiées
 - [ ] Rédaction article : sections 1–9 complétées
 
@@ -469,7 +507,7 @@ Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter
 
 ### Hypothèses de calcul
 
-| Paramètre | Baseline / RAG / rerank / FC (Groq + rerank local) | Fine-tuné / RAFT (Colab, GPU) |
+| Paramètre | Baseline / RAG / rerank / FC (Groq + rerank local) | Fine-tuné / FT+RAG / RAFT (Colab, GPU) |
 |---|---|---|
 | Hardware | H100 SXM (partagé) | NVIDIA A100 (Colab) |
 | TDP effectif | ~50W (~700W / 14 slots) | ~150W (A100 partagé, hypothèse conservative) |
@@ -478,20 +516,23 @@ Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter
 
 > *Formule : Énergie (Wh) = latence_s × TDP_W × PUE / 3600 · CO2 (g) = Énergie_kWh × intensité*
 
-### Estimations (jeu de test de la campagne courante)
+### Estimations (jeu de test — campagne **2026-05-06**, **n = 290** par méthode)
 
-| Méthode | Latence tot. | Énergie (Wh) | CO2 France (g) | CO2/pred (mg) | Ratio vs Baseline |
-|---|---|---|---|---|---|
-| Baseline | ~152 s | ~2.32 | ~0.121 | ~0.40 | ×1.0 |
-| RAG | ~244 s | ~3.72 | ~0.193 | ~0.64 | ×1.6 |
-| Fine-tuné | ~2009 s | ~40.3 | ~2.09 | ~6.97 | ×17.4 |
-| RAFT | *(à mesurer)* | — | — | — | — |
-| RAG + rerank | *(à mesurer)* | — | — | — | — |
-| Function calling | *(à mesurer)* | — | — | — | — |
+Énergie estimée par Σ(latence\_s × TDP × PUE / 3600) avec **API** : TDP 50 W, PUE 1,10 · **GPU local** : TDP 150 W, PUE 1,15 (hypothèses §Green AI, alignées sur **`09_evaluation.ipynb`** Fig. 10).
 
-> *(Valeurs à recalculer après chaque nouveau run à partir des latences et tailles de test de la campagne courante.)*
+| Méthode | Énergie (Wh) | CO₂ France (g)\* | Ratio énergie vs Baseline |
+|---------|--------------|-------------------|---------------------------|
+| Baseline | **2.43** | **0.13** | ×1.0 |
+| Rerank | 2.52 | 0.13 | ×1.04 |
+| RAG | 2.65 | 0.14 | ×1.09 |
+| Function calling | 4.77 | 0.25 | ×2.0 |
+| Fine-tuné | **197.6** | **10.3** | ×81 |
+| FT+RAG | **263.7** | **13.7** | ×109 |
+| RAFT | **294.9** | **15.3** | ×121 |
 
-> **Conclusion Green AI** : les méthodes **GPU** (fine-tuné, RAFT) restent coûteuses en latence/énergie vs **API** pour baseline/RAG. Le **reranking** ajoute du calcul local ; le **function calling** peut multiplier les allers-retours API — **mesurer** après le run complet (`08_evaluation.ipynb`).
+\*CO₂ (g) ≈ Wh/1000 × 52 g/kWh (mix France).
+
+> **Conclusion Green AI** : **FT+RAG**, **RAFT** et **fine-tuné** concentrent l’essentiel de l’empreinte **Wh** (latences GPU cumulées). Les stratégies **Groq + retrieval** (baseline, RAG, rerank) restent **deux ordres de grandeur** plus légères sur ce proxy — au prix d’une dépendance API.
 
 ### À mentionner dans la section Discussion
 - Mesure directe avec `codecarbon` sur l'inférence GPU locale (fine-tuné, RAFT)
@@ -503,15 +544,14 @@ Un squelette **LaTeX** (résumé, six méthodes, tableau principal à compléter
 
 ## Résultats clés à retenir pour la rédaction
 
-| Observation | Chiffre (run actuel) | Section |
-|-------------|-------------------------------|---------|
-| **RAG = meilleure méthode globale** sur F1 / ROUGE / METEOR / BS / Acc@85 | F1 **27.4**, BS **85.0**, Acc@85 **44.7 %** | §6.1 |
-| RAG = meilleure **fidélité** (proxy hallucination le plus bas) | **72.7 %** vs 86.4 baseline | §6.1 |
-| Fine-tuné sous baseline sur F1 / ROUGE | F1 12.3 vs 12.7 ; ROUGE 11.1 vs 12.0 | §6.1 |
-| Rerank / RAFT / FC : compléter le tableau §6.1 | lignes « — » → `final_report.json` | §6.1 |
-| Alignement gabarit LoRA / RAFT (train vs inférence) | §5.5 / §5.5.bis | §7.4 |
-| Dataset 100 % FR + HAL | pas de biais hallu. cross-langue | §5.2 |
-| **Quatrième source** : juridique (**code de la route** dans le RAG et le test) | segments PDF + `dataset_type` **juridique** | §5.1–5.2, §5.4 |
-| Groq = même modèle que baseline/RAG (génération Q&R) | limite §Discussion | §5.2 |
-| Source LaTeX pour papier | [`article_scientifique.tex`](article_scientifique.tex) | §6.1 bis |
-| Latence / CO2 : ordres de grandeur §6.5 / §7.6 | à actualiser après dernier run **`08_evaluation.ipynb`** | §6.5 |
+| Observation | Chiffre (run **2026-05-06**, n=290) | Section |
+|-------------|--------------------------------------|---------|
+| **Rerank = meilleure méthode** sur F1 / ROUGE / **METEOR** / BS / Acc@85 / fidélité | F1 **36.5 %**, BS **86.6 %**, Acc@85 **60.7 %**, hall. proxy **66.2 %** | §6.1 |
+| **RAG** = **second** ; meilleur écart vs baseline sur retrieval | F1 **32.8 %**, METEOR **52.4 %** | §6.1 |
+| **FT+RAG** ≈ **fine-tuné** en BS (~81 %), **loin sous RAG** ; latence **~19 s** | BS **81.0 %**, F1 **14.6 %** | §6.1, §7.1 |
+| **RAFT** : **METEOR** minimal (**26.3 %**) ; halluc. proxy **88 %** | À traiter comme **négatif empirique** sur ce setup | §6.1 |
+| **LLM juge** (Claude Sonnet 4.6) : ordre **rerank > rag > FC > baseline ≈ ft_rag** | Composite ~**3.72** (rerank) vs ~**1.78** (FT+RAG) | §6.7 |
+| Dataset 100 % FR + HAL | pas de biais hallu. cross-langue contexte/réponse | §5.2 |
+| **Code de la route** indexé + test **juridique** | Voir **Fig. 7** / §6.2 | §5.1–5.4 |
+| Source LaTeX pour papier | [`article_scientifique.tex`](article_scientifique.tex) — **mettre à jour pour 7 méthodes** | §6.1 bis |
+| Empreinte **Wh** : FT+RAG / RAFT **×100×** vs baseline (proxy §Green AI) | Table §Green AI | §6.5 |

@@ -1,0 +1,8 @@
+method,n,mean_coherence,mean_utilite,mean_fidelite,mean_composite,judge_model,notes
+rerank,290,3.934,3.664,3.570,3.723,claude-sonnet-4-6,synthèse depuis llm_judge_anthropic_all_methods.json (2026-05-06)
+rag,290,3.676,3.311,3.290,3.426,claude-sonnet-4-6,
+function_calling,290,3.212,2.743,2.482,2.813,claude-sonnet-4-6,
+baseline,290,2.461,1.724,1.369,1.851,claude-sonnet-4-6,
+ft_rag,290,2.000,1.788,1.547,1.779,claude-sonnet-4-6,
+finetuned,290,2.024,1.611,1.246,1.627,claude-sonnet-4-6,
+raft,290,1.625,1.525,1.275,1.475,claude-sonnet-4-6,

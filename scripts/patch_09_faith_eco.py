@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Patch 08_evaluation.ipynb: remove EM, add faithfulness + fig10 ecology."""
+"""Patch 09_evaluation.ipynb: remove EM, add faithfulness + fig10 ecology."""
 import json
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-NB_PATH = ROOT / "08_evaluation.ipynb"
+NB_PATH = ROOT / "09_evaluation.ipynb"
 nb = json.loads(NB_PATH.read_text(encoding="utf-8"))
 
 
@@ -155,8 +155,8 @@ set_src("cell-plot-metrics", src)
 # --- cell-summary : replace EM best, add p10 to list ---
 src = "".join(get_cell("cell-summary")["source"])
 src = src.replace(
-    "] + [(\"08_evaluation\", p) for p in [p1, p2, p3, p4, p5, p6, p7, p8, p9]]\n",
-    "] + [(\"08_evaluation\", p) for p in [p1, p2, p3, p4, p5, p6, p7, p8, p9, p10]]\n",
+    "] + [(\"09_evaluation\", p) for p in [p1, p2, p3, p4, p5, p6, p7, p8, p9]]\n",
+    "] + [(\"09_evaluation\", p) for p in [p1, p2, p3, p4, p5, p6, p7, p8, p9, p10]]\n",
 )
 src = src.replace(
     "best_em   = max(all_results, key=lambda x: x['exact_match'])\n",
