@@ -72,7 +72,7 @@ def patch_04(nb):
     replace_in_nb(
         nb,
         "Lancez 07_raft.ipynb (LoRA hybride spécialisé) puis 05_hybrid_eval.ipynb.",
-        "Lancez `05_raft.ipynb`, puis `06_rag_rerank.ipynb`, `07_function_calling.ipynb`, enfin `08_evaluation.ipynb`.",
+        "Lancez `05_raft.ipynb`, puis `06_rag_rerank.ipynb`, `07_function_calling.ipynb`, `08_ft_plus_rag.ipynb`, puis `09_evaluation.ipynb`.",
     )
 
 
@@ -106,7 +106,7 @@ def set_cell_lines(nb, cell_id: str, lines: list[str]):
     raise KeyError(cell_id)
 
 
-def eval_to_08():
+def eval_to_09():
     p_old = ROOT / "06_evaluation.ipynb"
     if not p_old.exists():
         raise FileNotFoundError("06_evaluation.ipynb manquant")
@@ -116,7 +116,7 @@ def eval_to_08():
         nb,
         "cell06-title",
         [
-            "# Notebook 08 — Évaluation comparative (6 méthodes)",
+            "# Notebook 09 — Évaluation comparative (6 méthodes)",
             "",
             "**Prérequis** : `test.json` + les JSON dans `results/` :",
             "- `baseline_predictions.json`, `rag_predictions.json`, `finetuned_predictions.json`",
@@ -203,7 +203,7 @@ def eval_to_08():
                 "METHOD_COLORS    = ['#4C72B0', '#55A868', '#C44E52', '#8172B2']",
                 "METHOD_COLORS    = ['#4C72B0', '#55A868', '#C44E52', '#8172B2', '#CCB974', '#8c564b']",
             )
-            src = src.replace("notebook 06", "notebook 08")
+            src = src.replace("notebook 06", "notebook 09")
             lines = src.split("\n")
             c["source"] = [ln + "\n" for ln in lines[:-1]] + ([lines[-1]] if lines else [])
 
@@ -221,12 +221,12 @@ def eval_to_08():
 
     for c in nb["cells"]:
         if c.get("id", "").startswith("cell06-"):
-            c["id"] = c["id"].replace("cell06-", "cell08-")
+            c["id"] = c["id"].replace("cell06-", "cell09-")
 
     if "metadata" in nb and "colab" in nb["metadata"]:
-        nb["metadata"]["colab"]["name"] = "08_evaluation.ipynb"
+        nb["metadata"]["colab"]["name"] = "09_evaluation.ipynb"
 
-    save_nb("08_evaluation.ipynb", nb)
+    save_nb("09_evaluation.ipynb", nb)
     rm_if_exists(p_old)
 
 
@@ -515,7 +515,7 @@ print("Sauvegardé", outp, len(fc_predictions))""".split(
                 "# Notebook 07 — Function calling + retrieval (Groq)\n\n"
                 "**Prérequis :** `03` (FAISS).\n\n"
                 "**Sortie :** `results/function_calling_predictions.json`\n\n"
-                "**Suite :** `08_evaluation.ipynb`",
+                "**Suite :** `08_ft_plus_rag.ipynb`, puis **`09_evaluation.ipynb`**",
                 "cell07-md-title",
             ),
             cell_md("## 0. Drive", "cell07-md-drive"),
@@ -550,9 +550,9 @@ def main():
     raft_to_05()
     make_06_rerank()
     make_07_fc()
-    eval_to_08()
+    eval_to_09()
 
-    print("OK: hybrid removed, 05_raft, 06_rag_rerank, 07_function_calling, 08_evaluation")
+    print("OK: hybrid removed, 05_raft, 06_rag_rerank, 07_function_calling, 08_ft_plus_rag, 09_evaluation")
 
 
 if __name__ == "__main__":

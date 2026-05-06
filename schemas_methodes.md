@@ -1,8 +1,16 @@
-# Schémas des quatre paradigmes d’intégration d’information
+# Schémas des paradigmes d’intégration d’information
 
 Document autonome pour le projet **Article_scientifique** : corpus français (Option B), base génératrice **LLaMA 3.1 8B** alignée sur **`llama-3.1-8b-instant`** (Groq) pour les méthodes API, modèle quantifié + adaptateurs **LoRA** (Unsloth) pour l’adaptation locale.
 
-Les **six** pipelines du README se regroupent ici en **quatre schémas** : le **RAG + reranking** apparaît comme extension du RAG ; le **RAFT** comme variante d’entraînement du schéma LoRA.
+Les **sept** stratégies du README se regroupent ici en **cinq familles** :
+
+1. **Baseline** — aucune récupération.  
+2. **RAG (+ reranking)** — récupération à l’inférence (dense puis optionnellement cross-encoder).  
+3. **Fine-tuning LoRA (+ RAFT)** — adaptation des poids (train supervisé ; RAFT = variante « contexte + distracteurs » au train).  
+4. **FT+RAG** — **combinaison explicite** : même index FAISS que le RAG + **inférence** avec l’adaptateur `lora_adapter_ft` (notebook **`08_ft_plus_rag.ipynb`**).  
+5. **Function calling** — décision structurée d’appeler la recherche documentaire avant synthèse.
+
+L’**agrégation des métriques** sur les **sept** fichiers `*_predictions.json` (dont **`ft_rag_predictions.json`**) se fait dans **`09_evaluation.ipynb`**. Une **évaluation subjective** complémentaire (LLM-as-judge) est décrite dans **`10_llm_as_judge.ipynb`** / **`11_llm_judge_analysis.ipynb`**.
 
 ---
 
@@ -75,7 +83,7 @@ flowchart TB
 
 **Notebooks :** `04_finetuning.ipynb` (LoRA standard) · `05_raft.ipynb` (RAFT)  
 **Entrée train :** `data/processed/train.json`  
-**Sorties modèles :** `models/lora_adapter/` · `models/lora_adapter_raft/`  
+**Sorties modèles :** `models/lora_adapter_ft/` · `models/lora_adapter_raft/`  
 **Inférence :** locale (Unsloth + base quantifiée LLaMA 3.1 8B)  
 **Sorties prédictions :** `results/finetuned_predictions.json` · `results/raft_predictions.json`
 
@@ -84,7 +92,7 @@ flowchart TB
   subgraph Entraînement
     TR["train.json<br/>Q / R / contexte"]
     U["Unsloth + LoRA<br/>sur base 8B"]
-    AD1["Adaptateur<br/>lora_adapter/"]
+    AD1["Adaptateur FT<br/>lora_adapter_ft/"]
     AD2["Adaptateur RAFT<br/>lora_adapter_raft/"]
     TR --> U
     U --> AD1
@@ -106,7 +114,34 @@ flowchart TB
 
 ---
 
-## 4. Function calling (outil de recherche)
+## 4. FT+RAG — LoRA fine-tuné **+** retrieval FAISS (inférence)
+
+**Notebook :** `08_ft_plus_rag.ipynb`  
+**Index :** identique au RAG (`models/faiss_index/`) — chunks **200 / 50**.  
+**Modèle :** charge **`lora_adapter_ft`** (produit par **`04_finetuning.ipynb`**).  
+**Sortie :** `results/ft_rag_predictions.json`
+
+```mermaid
+flowchart LR
+  subgraph Retrieval
+    Q["Question"]
+    E["MiniLM + FAISS"]
+    C["Top-k passages"]
+  end
+  subgraph Gen_GPU
+    L["Base 8B quantifiée<br/>+ lora_adapter_ft"]
+    O["Décodage Alpaca<br/>Instruction / Context / Input"]
+  end
+  Q --> E --> C --> O
+  L --> O
+  O --> R["ft_rag_predictions.json"]
+```
+
+**Idée :** combiner **passages récupérés** (comme le RAG) avec un **générateur adapté par LoRA**. Ce schéma est **distinct** du RAFT : ici le retrieveur est celui du pipeline RAG à l’inférence, pas un entraînement « pseudo-RAG » isolé.
+
+---
+
+## 5. Function calling (outil de recherche)
 
 **Notebook :** `07_function_calling.ipynb`  
 **Même index que le RAG :** FAISS + `metadata.json` + bi-encodeur  
@@ -153,7 +188,8 @@ flowchart LR
 |--------|---------------------------|------------------------------|
 | 1. Baseline | Groq seul | Aucun |
 | 2. RAG (+ rerank) | FAISS, metadata, Groq | Passages récupérés (dense puis optionnellement rerankés) |
-| 3. LoRA / RAFT | train.json, adaptateurs | Optionnel selon protocole (souvent question seule en éval) |
-| 4. Function calling | FAISS + outil `search_docs` | Passages après décision d’outil |
+| 3. LoRA / RAFT | train.json, adaptateurs `lora_adapter_ft` / `_raft` | Souvent question seule en éval (pas de FAISS) |
+| **4. FT+RAG** | **`08_ft_plus_rag.ipynb`**, `lora_adapter_ft`, FAISS | Passages **puis** génération LoRA locale |
+| 5. Function calling | FAISS + outil `search_docs` | Passages après décision d’outil |
 
-Pour l’**agrégation des métriques** sur l’ensemble des stratégies (y compris les six du README), utiliser **`08_evaluation.ipynb`** et les JSON `*_predictions.json` dans `results/`.
+Pour l’**agrégation des métriques** sur **les sept stratégies**, utiliser **`09_evaluation.ipynb`** et les JSON listés dans le README (incluant **`ft_rag_predictions.json`**).

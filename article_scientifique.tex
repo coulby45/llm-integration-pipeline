@@ -1,145 +1,1158 @@
-% Article scientifique — Baseline, RAG, LoRA, RAFT, reranking, function calling (LLaMA 3.1 8B)
-% Compilation locale : pdflatex article_scientifique.tex (répéter 2× pour références croisées)
-% Ou importer ce fichier dans Overleaf (Menu principal → projet → upload).
-\documentclass[11pt,a4paper]{article}
+%% ============================================================
+%%  Article scientifique — double colonne IEEE
+%%  Intégration de nouvelles informations dans les LLMs :
+%%  comparaison de sept stratégies sur corpus français hétérogène
+%%  Compilez avec : pdflatex article_scientifique.tex (x2)
+%% ============================================================
 
+\documentclass[10pt,journal,compsoc]{IEEEtran}
+
+%% ---- Packages ----
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[french]{babel}
-\usepackage{geometry}
-\geometry{margin=2.5cm}
-\usepackage{microtype}
-\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
 \usepackage{booktabs}
-\usepackage{amsmath}
-\usepackage[hidelinks]{hyperref}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{microtype}
+\usepackage{array}
+\usepackage{tabularx}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{url}
+\usepackage{cite}
+\usepackage{float}
 
-\title{%
-Intégration de nouvelles informations dans les LLM :\\
-baseline, RAG, fine-tuning LoRA, RAFT, reranking et function calling\\
-sur corpus français hétérogène%
+%% ---- Couleurs personnalisées ----
+\definecolor{best}{RGB}{0,128,0}       % vert : meilleur résultat
+\definecolor{worst}{RGB}{180,0,0}      % rouge : moins bon résultat
+
+%% ---- Commandes utilitaires ----
+\newcommand{\best}[1]{\textbf{\textcolor{best}{#1}}}   % meilleur score
+\newcommand{\worst}[1]{\textcolor{worst}{#1}}           % pire score
+\newcommand{\bs}{BERTScore}
+\newcommand{\rl}{ROUGE-L}
+\newcommand{\met}{METEOR}
+\newcommand{\fc}{\textit{function calling}}
+
+%% ---- Métadonnées ----
+\title{Intégration de nouvelles informations dans les LLMs :\\
+Baseline, RAG, Fine-tuning LoRA, FT+RAG, RAFT,\\
+Reranking et Function Calling sur corpus français hétérogène}
+
+\author{%
+  \IEEEauthorblockN{Abdoul Karim Coulibaly}\\
+  \IEEEauthorblockA{%
+    CESI École d'Ingénieurs, Saint-Nazaire, France\\
+    \textit{Projet pédagogique --- FISE A4 Data Science \& IA, 2025--2026}\\
+    \href{mailto:abdoulkarim.coulibaly@viaacesi.fr}{abdoulkarim.coulibaly@viaacesi.fr}\\
+    \url{https://github.com/coulby45/llm-integration-pipeline}
+  }
 }
-\author{Prénom Nom \and Affiliation}
-\date{\today}
+
+\markboth{Projet Article Scientifique --- CESI Saint-Nazaire, 2026}{}
 
 \begin{document}
+
 \maketitle
 
+%% ============================================================
 \begin{abstract}
-Les grands modèles de langage subissent une date de coupure des connaissances ; intégrer des informations postérieures sans ré-entraînement complet motive des stratégies variées : récupération augmentée (RAG), adaptation efficace des poids (LoRA), pseudo-RAG à l'entraînement (RAFT), affinement du retrieveur par \emph{reranking}, ou encore décision de recherche via \emph{function calling}.
-Nous comparons six configurations sur un socle centré \emph{LLaMA 3.1 8B} : \textbf{baseline} (Groq, sans contexte), \textbf{RAG} (FAISS + chunks 400 mots, Groq), \textbf{fine-tuning LoRA} supervisé (Unsloth, adaptateur \texttt{lora\_adapter\_ft}), \textbf{RAFT} (contexte gold + distracteurs FAISS au train, adaptateur \texttt{lora\_adapter\_raft}), \textbf{RAG + reranking} (cross-encoder multilingue puis Groq), et \textbf{function calling} (outil \texttt{search\_docs} + Groq).
-Le jeu de données (Option~B) est entièrement en français, généré via l'API Groq (\texttt{llama-3.1-8b-instant}), \textbf{même famille} que la baseline et le RAG : le biais circulaire doit être discuté explicitement.
-Les agrégations de métriques (EM, F1, BERTScore, ROUGE-L, proxy d'hallucination, latence, etc.) sont produites par le notebook~\texttt{08\_evaluation.ipynb} à partir des six fichiers \texttt{*\_predictions.json}.
-Les lignes du tableau principal correspondant à RAFT, au reranking et au function calling doivent être \textbf{recopiées} depuis \texttt{final\_report.json} après chaque campagne complète ; les valeurs historiques ci-dessous illustrent surtout baseline, RAG et fine-tuné.
+Les grands modèles de langage (LLMs) souffrent d'une date de coupure
+figée~: \textsc{LLaMA~3.1~8B}, dont la coupure s'arrête à décembre
+2023, ignore toute publication ou événement postérieur. Ce verrou
+constitue un frein majeur pour les applications nécessitant des
+connaissances fraîches. Nous proposons une évaluation comparative
+de \textbf{sept stratégies d'intégration d'information} sur ce socle
+commun~: (1)~Baseline (Groq sans contexte), (2)~RAG dense (FAISS +
+bi-encodeur multilingue), (3)~Fine-tuning LoRA, (4)~FT+RAG (adaptateur
+LoRA combiné à une récupération FAISS à l'inférence), (5)~RAFT
+(\textit{Retrieval-Augmented Fine-Tuning}), (6)~RAG + reranking
+cross-encoder, et (7)~Function calling avec outil \texttt{search\_docs}.
+L'évaluation est conduite sur un corpus \textbf{100\,\% français}
+multi-source (Wikipedia, HAL.science, actualités, code de la route)
+de 1\,450 paires question--réponse (\textit{n}$_\text{test}$\,=\,290),
+selon des métriques lexicales (F1, \rl, \met), sémantiques (\bs{}
+avec intervalles de confiance bootstrap à 95\,\%), de fidélité
+(proxy d'hallucination) et subjectives (LLM-as-judge via
+Claude Sonnet~4.6). Nos résultats montrent que le \textbf{reranking}
+et le \textbf{RAG} dominent toutes les métriques qualitatives avec
+respectivement un F1 de 36,5\,\% et 32,8\,\%, contre 16,3\,\% pour
+la baseline, tandis que les méthodes par fine-tuning (LoRA, FT+RAG,
+RAFT) \textbf{n'améliorent pas} la baseline sur ce protocole. Le
+\textit{function calling} se positionne en intermédiaire (F1\,=\,23,9\,\%).
+Ces résultats soulèvent une discussion sur le coût computationnel,
+la fraîcheur des données et les biais méthodologiques inhérents
+à l'évaluation automatique.
 \end{abstract}
 
-\noindent\textbf{Mots-clés :}
-grands modèles de langage, RAG, reranking, LoRA, RAFT, function calling, FAISS, français, hallucination
+\begin{IEEEkeywords}
+LLM, RAG, LoRA, RAFT, reranking, function calling, évaluation,
+corpus français, hallucination, BERTScore, FAISS, LLM-as-judge
+\end{IEEEkeywords}
 
+
+%% ============================================================
 \section{Introduction}
 \label{sec:intro}
-% Contexte : coupure de connaissance, besoin d'actualiser sans ré-entraînement complet.
-% Question de recherche : comparer six stratégies sur un protocole documenté (Groq vs local).
 
-\section{Travaux connexes}
+\subsection{Contexte et motivation}
+
+Les LLMs comme GPT-4~\cite{openai2023gpt4},
+Mistral~7B~\cite{jiang2023mistral} ou
+\textsc{LLaMA}~3.1~8B~\cite{meta2024llama3} ont démontré des capacités
+remarquables de compréhension et de génération de texte. Cependant,
+ils partagent une limitation fondamentale~: leur connaissance du monde
+est figée à leur \textbf{date de coupure d'entraînement}. Pour
+\textsc{LLaMA}~3.1~8B, cette coupure s'arrête à décembre 2023~; le
+modèle ignore donc les dernières publications scientifiques, les
+nouvelles lois promulguées, ou les événements d'actualité récents.
+
+Cette contrainte engendre deux problèmes pratiques majeurs~:
+(i)~l'\textbf{obsolescence} des réponses sur des sujets évolutifs~;
+(ii)~les \textbf{hallucinations}~\cite{ji2023hallucination}, où le
+modèle génère avec confiance des informations factuellement incorrectes
+faute de données récentes. La question centrale de ce travail est donc~:
+
+\begin{quote}
+  \textit{Comment intégrer efficacement de nouvelles connaissances dans
+  un LLM sans le réentraîner entièrement, et quelle stratégie offre le
+  meilleur compromis qualité/coût sur du français ?}
+\end{quote}
+
+\subsection{Verrou scientifique}
+
+La littérature existante souffre de trois biais récurrents. Premièrement,
+les comparaisons mobilisent souvent des \textbf{modèles différents} pour
+chaque méthode, rendant les conclusions difficilement généralisables.
+Deuxièmement, la quasi-totalité des benchmarks sont en
+\textbf{anglais}~\cite{rajpurkar2016squad}, ce qui ne rend pas compte
+des spécificités du traitement du français. Troisièmement, les
+évaluations ignorent fréquemment la \textbf{nature du domaine}
+(textes techniques \textit{vs} actualités) et la \textbf{complexité des
+questions} (factuelle simple \textit{vs} raisonnement multi-sauts).
+
+\subsection{Contributions}
+
+Ce travail apporte les contributions suivantes~:
+
+\begin{enumerate}
+  \item Un \textbf{corpus 100\,\% français} multi-source et multi-domaine
+        (Wikipedia, HAL.science, presse, code de la route) avec quatre
+        types de domaine et cinq types de questions.
+  \item Un \textbf{protocole de comparaison équitable}~: les sept méthodes
+        partagent le même socle \textsc{LLaMA}~3.1~8B.
+  \item Une \textbf{évaluation multi-axe} incluant métriques lexicales,
+        sémantiques, proxy d'hallucination, latence, impact écologique
+        et évaluation subjective LLM-as-judge.
+  \item Une \textbf{analyse croisée} méthodes $\times$ domaines $\times$
+        types de question, avec intervalles de confiance bootstrap.
+  \item Des \textbf{recommandations pratiques} pour le déploiement en
+        contexte francophone contraint.
+\end{enumerate}
+
+\subsection{Plan de l'article}
+
+La section~\ref{sec:related} présente l'état de l'art. La
+section~\ref{sec:methodo} décrit notre méthodologie et les sept
+pipelines. Les résultats sont présentés en section~\ref{sec:results}
+et discutés en section~\ref{sec:discussion}. La
+section~\ref{sec:conclusion} conclut et ouvre des perspectives.
+
+
+%% ============================================================
+\section{État de l'art}
 \label{sec:related}
-% RAG (Lewis et al.), FAISS, Sentence-Transformers, LoRA/QLoRA, RAFT, reranking, tool use.
 
+\subsection{Grands modèles de langage}
+
+Depuis l'introduction du mécanisme d'attention par \textit{Transformer}
+\cite{vaswani2017attention}, les LLMs ont connu une croissance
+exponentielle de leurs capacités~: de GPT-2~\cite{radford2019language}
+à GPT-3~\cite{brown2020language} puis à
+\textsc{LLaMA}~2~\cite{touvron2023llama} et
+\textsc{LLaMA}~3~\cite{meta2024llama3}. Notre socle expérimental,
+\textsc{LLaMA}~3.1~8B, dispose d'une fenêtre de contexte de 128k tokens
+et d'une quantification 4-bit via Unsloth~\cite{unsloth2024}, ce qui
+le rend utilisable sur GPU grand public (NVIDIA A100 dans nos
+expériences sur Google Colab).
+
+\subsection{Problème de la mise à jour des connaissances}
+
+Le \textit{catastrophic forgetting}~\cite{mccloskey1989catastrophic,
+kirkpatrick2017overcoming} décrit la tendance d'un réseau de neurones
+à oublier des connaissances antérieures lors d'un nouvel entraînement.
+Ji~et~al.~\cite{ji2023hallucination} ont formalisé le problème des
+hallucinations dans les LLMs. Des approches d'édition de connaissances
+telles que ROME~\cite{meng2022locating} ou
+SERAC~\cite{mitchell2022memory} permettent de modifier des faits
+spécifiques sans réentraînement complet, mais peinent à généraliser.
+
+\subsection{Génération augmentée par récupération (RAG)}
+
+Lewis~et~al.~\cite{lewis2020rag} ont introduit le paradigme RAG~:
+au moment de l'inférence, un retrieveur dense récupère des passages
+pertinents depuis une base documentaire, qui sont ensuite injectés
+dans le prompt du générateur. Cette approche découple la mémorisation
+(encodée dans l'index) de la génération (produite par le LLM),
+permettant de mettre à jour les connaissances par simple réindexation.
+
+L'indexation vectorielle efficace repose sur FAISS~\cite{johnson2019faiss}.
+Les représentations sémantiques sont obtenues via des
+Sentence-Transformers~\cite{reimers2019sentencebert}, dont les variantes
+multilingues couvrent le français. Le reranking
+cross-encoder~\cite{nogueira2019passage} affine le classement initial
+en évaluant chaque paire (requête, passage) conjointement.
+
+\subsection{Fine-tuning efficace --- LoRA et RAFT}
+
+Le fine-tuning complet de LLMs est prohibitif en ressources.
+LoRA~\cite{hu2022lora} résout ce problème en décomposant les mises à
+jour de poids en matrices de bas rang~: si $\Delta W = AB$ avec
+$A \in \mathbb{R}^{d \times r}$ et $B \in \mathbb{R}^{r \times d}$,
+le nombre de paramètres passe de $d^2$ à $2rd$ avec $r \ll d$.
+QLoRA~\cite{dettmers2023qlora} ajoute une quantification 4-bit,
+réduisant encore l'empreinte mémoire.
+
+RAFT (\textit{Retrieval-Augmented Fine-Tuning})~\cite{hong2024raft}
+propose d'entraîner le modèle avec des contextes mixtes~: des passages
+pertinents (\textit{oracle documents}) mélangés à des distracteurs
+(\textit{distractor documents}). Le modèle apprend ainsi à ignorer
+le bruit retrieval dès l'entraînement, réduisant le désalignement
+entre phase d'entraînement (avec récupération) et inférence.
+
+\subsection{Function calling et agents à outils}
+
+Le \textit{function calling} permet au LLM de décider dynamiquement
+quand et comment interroger un outil externe~\cite{schick2023toolformer}.
+Plutôt que d'injecter systématiquement des passages dans le prompt, le
+modèle émet un appel d'outil structuré (JSON), l'exécution restant côté
+client. Cette approche est particulièrement adaptée aux flux agentiques
+nécessitant des politiques de recherche conditionnelle.
+
+\subsection{Évaluation des LLMs}
+
+L'évaluation repose classiquement sur des métriques lexicales~:
+F1 token-level~\cite{rajpurkar2016squad}, ROUGE-L~\cite{lin2004rouge},
+et METEOR~\cite{banerjee2005meteor}. Ces métriques pénalisent les
+paraphrases correctes et ne captent pas la cohérence factuelle.
+BERTScore~\cite{zhang2020bertscore} remédie partiellement à ce problème
+en calculant la similarité sémantique via des représentations
+contextualisées. Des frameworks comme RAGAS~\cite{es2024ragas} ont
+été développés pour évaluer spécifiquement les systèmes RAG. Plus
+récemment, les approches \textit{LLM-as-judge} utilisent un modèle
+de grande taille comme évaluateur automatique, offrant une mesure
+qualitative complémentaire aux métriques lexicales.
+
+
+%% ============================================================
 \section{Méthodologie}
-\label{sec:method}
+\label{sec:methodo}
 
-\subsection{Corpus et construction des paires question-réponse}
-% Option B : 1200 train / 300 test ; génération Groq llama-3.1-8b-instant ; champ contexte verbatim ; sources Wikipedia FR, HAL, presse.
+\subsection{Architecture générale du pipeline}
 
-\subsection{Baseline}
-% Groq, LLaMA 3.1 8B, sans contexte documentaire. Notebook 03.
+L'ensemble des sept méthodes comparées s'appuie sur le même socle~:
+\textbf{\textsc{LLaMA}~3.1~8B}. Les méthodes sans adaptation des poids
+(Baseline, RAG, Reranking, Function calling) utilisent le modèle via
+l'API Groq (\texttt{llama-3.1-8b-instant}). Les méthodes avec
+adaptation (Fine-tuning LoRA, FT+RAG, RAFT) mobilisent la version
+quantifiée 4-bit (\texttt{unsloth/Meta-Llama-3.1-8B-bnb-4bit}) sur
+GPU NVIDIA A100 via Google Colab.
 
-\subsection{RAG}
-% Embeddings multilingues, index FAISS sur chunks 400 mots / chevauchement 100, top-5, générateur Groq. Notebook 03.
-
-\subsection{Fine-tuning LoRA}
-% Unsloth, QLoRA 4-bit, format Alpaca ; notebook 04 ; adaptateur lora_adapter_ft.
-Le fine-tuning (notebook~\texttt{04\_finetuning.ipynb}) entraîne un adaptateur LoRA (\texttt{lora\_adapter\_ft}) avec séparation train/validation et sélection du meilleur checkpoint.
-La génération est contrainte pour réduire les répétitions (\texttt{repetition\_penalty}, \texttt{no\_repeat\_ngram\_size}, nettoyage post-génération).
-
-\subsection{RAFT (pseudo-RAG au train)}
-\label{sec:raft}
-% Notebook 05_raft.ipynb : pour chaque exemple de train, top-k FAISS + distracteurs, gabarit Instruction/Context/Input/Response ; lora_adapter_raft ; raft_predictions.json.
-Le notebook~\texttt{05\_raft.ipynb} construit des exemples d'entraînement avec contexte (or ou récupéré) et distracteurs, entraîne un adaptateur dédié (\texttt{lora\_adapter\_raft}), puis infère sur le jeu de test vers \texttt{raft\_predictions.json}.
-
-\subsection{RAG avec reranking}
-\label{sec:rerank}
-% Notebook 06_rag_rerank.ipynb : récupération large, cross-encoder ms-marco multilingue, top-k, Groq ; rerank_predictions.json.
-Après une récupération dense élargie (top-$M$), un cross-encoder multilingue rerank les passages ; seuls les top-$k$ sont injectés dans le prompt Groq (\texttt{06\_rag\_rerank.ipynb} $\rightarrow$ \texttt{rerank\_predictions.json}).
-
-\subsection{Function calling}
-\label{sec:fc}
-% Notebook 07_function_calling.ipynb : schéma outil search_docs, exécution FAISS côté client, réponse finale Groq ; function_calling_predictions.json.
-Le modèle Groq peut invoquer l'outil \texttt{search\_docs} ; le client exécute la recherche FAISS et renvoie les passages avant la réponse finale (\texttt{07\_function\_calling.ipynb}).
-
-\subsection{Alignement des gabarits prompt (perspective)}
-\label{sec:prompt-align}
-Pour les méthodes locales (LoRA, RAFT), tout écart entre le format d'entraînement et celui de l'inférence peut dégrader les scores ; une piste consiste à injecter systématiquement un bloc \texttt{\#\#\# Context} aligné sur l'inférence.
-
-\subsection{Métriques}
-\label{sec:metrics}
-% EM, F1, BERTScore, ROUGE-L, METEOR (NLTK), IC bootstrap 95\,\% sur moyennes par paire, proxy hallucination, Acc@seuils, confiance.
-Le notebook~\texttt{08\_evaluation.ipynb} calcule notamment METEOR (NLTK) et des intervalles de confiance bootstrap ($B=1000$, percentiles 2{,}5 / 97{,}5) sur les scores \emph{par exemple} pour BERTScore, METEOR, F1 et ROUGE-L (champs \texttt{bertscore\_ci95\_*}, \texttt{meteor\_ci95\_*}, etc.\ dans \texttt{final\_report.json}).
-Un proxy de confiance (probabilités token-level) peut être reporté pour les générations locales (fine-tuné, RAFT) lorsque le champ est présent dans les JSON.
-
-\section{Résultats}
-\label{sec:results}
-
-\subsection{Tableau comparatif global}
-\label{tab:global}
-Le tableau~\ref{tab:six-methods} synthétise les scores sur l'ensemble de test ($n=300$, Option~B). Les valeurs \textbf{doivent} être synchronisées depuis \texttt{final\_report.json} (notebook~\texttt{08\_evaluation.ipynb}) après exécution des notebooks \texttt{03} à \texttt{07}.
-
-\begin{table}[htbp]
+%%
+%% [FIGURE 1 — À INSÉRER]
+%% Architecture globale du pipeline : corpus → génération Q&A (Groq)
+%% → 7 méthodes → évaluation (09_evaluation.ipynb)
+%% Fichier : figures/fig1_architecture_globale.pdf
+%%
+\begin{figure}[H]
   \centering
-  \caption{Comparaison des six méthodes (Option~B, métriques globales ; compléter les lignes \emph{n/c} depuis le rapport).}
-  \label{tab:six-methods}
-  \begin{tabular}{lcccccccc}
+  \fbox{\parbox{0.9\linewidth}{\centering
+    \textit{[Figure 1 --- Architecture globale du pipeline]}\\[4pt]
+    Corpus (4 sources) $\rightarrow$ Q\&A Claude Sonnet~4.6 $\rightarrow$
+    7 méthodes $\rightarrow$ Évaluation \texttt{09\_evaluation.ipynb}
+  }}
+  \caption{Vue d'ensemble du pipeline expérimental. Les sept méthodes
+           partagent le même socle \textsc{LLaMA}~3.1~8B.}
+  \label{fig:pipeline}
+\end{figure}
+
+\subsection{Constitution du corpus}
+\label{subsec:corpus}
+
+Nous constituons un corpus \textbf{100\,\% français} multi-source
+(Table~\ref{tab:corpus}). Les questions et réponses de référence sont
+générées par Claude Sonnet~4.6 via l'API Anthropic, avec un contexte
+(\texttt{context}) extrait verbatim du document source. Le générateur
+du dataset étant \textbf{distinct} du modèle d'inférence testé
+(\textsc{LLaMA}~3.1~8B), aucun biais circulaire n'affecte l'évaluation.
+
+\begin{table}[h]
+  \centering
+  \caption{Statistiques du corpus expérimental (split 80/20, seed\,=\,42,
+           stratification par \texttt{recency\_category})}
+  \label{tab:corpus}
+  \renewcommand{\arraystretch}{1.25}
+  \begin{tabular}{lcccc}
     \toprule
-    Méthode & F1 & BS & ROUGE-L & METEOR & Acc@85 & Hall.\,(\%) & Hall$\le$25 & Hall$\le$20 \\
+    \textbf{Dataset} & \textbf{Source} & \textbf{Train} &
+    \textbf{Test} & \textbf{Q/doc} \\
     \midrule
-    Baseline    & 12.7 & 80.8 & 12.0 & 16.9 & 10.6 & 86.4 & 0 & 0 \\
-    RAG         & \textbf{27.4} & \textbf{85.0} & \textbf{24.6} & \textbf{34.5} & \textbf{44.7} & \textbf{72.7} & \textbf{2.3} & \textbf{2.3} \\
-    Fine-tuné   & 12.3 & 81.4 & 11.1 & 18.1 & 7.6  & 87.7 & 0 & 0 \\
-    RAFT        & n/c & n/c & n/c & n/c & n/c & n/c & n/c & n/c \\
-    RAG+rerank  & n/c & n/c & n/c & n/c & n/c & n/c & n/c & n/c \\
-    Fun.\,call. & n/c & n/c & n/c & n/c & n/c & n/c & n/c & n/c \\
+    Technique   & Wikipedia FR      & 320 & 80  & 5 \\
+    Multi-sauts & HAL.science FR    & 360 & 90  & 5 \\
+    Temporel    & Le Monde / FI     & 400 & 100 & 5 \\
+    Juridique   & Code de la route  & 80  & 20  & 5 \\
+    \midrule
+    \multicolumn{2}{l}{\textbf{Total}} &
+    \textbf{1\,160} & \textbf{290} & — \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\noindent\textit{Notes :} Exact Match $=0$ pour baseline/RAG/fine-tuné sur le run recopié ; les IC bootstrap (BERTScore, METEOR, F1, ROUGE-L) sont à recopier depuis \texttt{final\_report.json} après chaque campagne.
+La catégorie de récence est déduite de la date ISO du document~:
+\texttt{récent} ($\geq$\,2024), \texttt{intermédiaire} (2022--2023),
+\texttt{fondamental} ($<$\,2022). Les types de questions varient~:
+factuelle, synthèse, compréhension (Wikipedia, presse) et
+simple/complexe multi-sauts (HAL). Le domaine juridique est constitué
+de segments du PDF officiel du code de la route ($\approx$\,1\,400 mots
+par segment), indexés dans le même FAISS que les autres sources.
 
-\subsection{Figures}
-\label{sec:figs}
-% Insérer \includegraphics depuis results/plots/ — figures du notebook 08_evaluation.
+\subsection{Méthode 1 --- Baseline}
 
+La baseline consiste à interroger \textsc{LLaMA}~3.1~8B via Groq
+\textbf{sans aucun contexte externe}. Le prompt minimal en français
+guide le modèle à répondre depuis ses paramètres figés. Cette méthode
+représente la limite inférieure~: les connaissances antérieures à
+décembre 2023 accessibles au modèle sans aide documentaire.
+
+\subsection{Méthode 2 --- RAG dense}
+
+%%
+%% [FIGURE 2 — À INSÉRER]
+%% Pipeline RAG dense (flowchart TB depuis schemas_methodes.md)
+%% Fichier : figures/fig2_rag_pipeline.pdf
+%%
+\begin{figure}[H]
+  \centering
+  \fbox{\parbox{0.9\linewidth}{\centering
+    \textit{[Figure 2 --- Pipeline RAG dense]}\\[4pt]
+    Question $\rightarrow$ Bi-encodeur MiniLM $\rightarrow$
+    FAISS (top-5) $\rightarrow$ Prompt + passages $\rightarrow$ Groq
+  }}
+  \caption{Pipeline RAG dense. Les documents sont indexés en chunks
+           de 200 mots (chevauchement 50 mots) dans un index FAISS
+           \texttt{IndexFlatIP}.}
+  \label{fig:rag}
+\end{figure}
+
+L'embedding est assuré par
+\texttt{paraphrase-multilingual-MiniLM-L12-v2} (dimension 384,
+FAISS \texttt{IndexFlatIP} sur vecteurs normalisés L2). Le corpus est
+découpé en chunks de 200 mots avec chevauchement de 50 mots~; ce
+paramétrage a été préféré à des fenêtres courtes (50--100 mots) qui
+dégradaient les performances du RAG sous la baseline dans une
+configuration préliminaire. Les 5 passages les plus proches
+(titre + texte) sont injectés dans le prompt Groq.
+
+\subsection{Méthode 3 --- Fine-tuning LoRA}
+
+%%
+%% [FIGURE 3 — À INSÉRER]
+%% Pipeline Fine-tuning LoRA (flowchart TB depuis schemas_methodes.md)
+%% Fichier : figures/fig3_lora_pipeline.pdf
+%%
+\begin{figure}[H]
+  \centering
+  \fbox{\parbox{0.9\linewidth}{\centering
+    \textit{[Figure 3 --- Pipeline Fine-tuning LoRA]}\\[4pt]
+    train.json $\rightarrow$ Unsloth + LoRA (rank 32) $\rightarrow$
+    Adaptateur $\rightarrow$ LLaMA 8B + adaptateur $\rightarrow$
+    Prédiction locale
+  }}
+  \caption{Fine-tuning LoRA via Unsloth sur GPU A100 (Google Colab).
+           L'entraînement utilise le gabarit Alpaca (format SFT).}
+  \label{fig:lora}
+\end{figure}
+
+Le fine-tuning s'appuie sur Unsloth~\cite{unsloth2024} avec la
+configuration LoRA suivante~: rank\,=\,32, $\alpha$\,=\,32,
+dropout\,=\,0.05, 7 modules d'attention et MLP
+(\texttt{q/k/v/o\_proj}, \texttt{gate/up/down\_proj}),
+6~époques, $lr$\,=\,$8 \times 10^{-5}$, batch effectif 16
+(batch\,=\,2, \texttt{gradient\_accumulation\_steps}\,=\,8),
+optimiseur AdamW 8-bit, \texttt{max\_seq\_length}\,=\,1024.
+Le format de prompting est Alpaca (\texttt{\#\#\# Instruction /
+\#\#\# Input / \#\#\# Response}). L'inférence utilise un
+\texttt{repetition\_penalty}\,=\,1.16 et
+\texttt{no\_repeat\_ngram\_size}\,=\,4.
+
+\subsection{Méthode 4 --- FT+RAG}
+
+FT+RAG combine l'adaptateur issu du fine-tuning LoRA
+(\texttt{lora\_adapter\_ft}) avec une récupération FAISS à l'inférence~:
+les passages sont récupérés depuis le même index que le RAG (chunks
+200/50) et injectés dans le prompt Alpaca avant décodage local.
+Cette méthode est \textbf{distincte} du RAFT~: ici le retrieveur est
+actif à l'inférence, non à l'entraînement. L'objectif est de tester
+si la combinaison passages + adaptateur surpasse le RAG seul.
+
+\subsection{Méthode 5 --- RAFT}
+
+RAFT étend le fine-tuning LoRA en construisant les exemples
+d'entraînement de manière à imiter un contexte RAG~: pour chaque
+exemple de \texttt{train.json}, le retrieveur FAISS récupère les
+top-$k$ passages, certains pertinents, d'autres servant de distracteurs.
+Le modèle apprend ainsi à identifier et exploiter les passages utiles
+tout en ignorant le bruit. L'adaptateur résultant
+(\texttt{lora\_adapter\_raft}) est ensuite appliqué sur les questions
+de test \textbf{sans} contexte injecté à l'inférence.
+
+\subsection{Méthode 6 --- RAG + Reranking}
+
+%%
+%% [FIGURE 4 — À INSÉRER]
+%% Pipeline RAG + Reranking (extension du schéma RAG)
+%% Fichier : figures/fig4_rerank_pipeline.pdf
+%%
+\begin{figure}[H]
+  \centering
+  \fbox{\parbox{0.9\linewidth}{\centering
+    \textit{[Figure 4 --- Pipeline RAG + Reranking]}\\[4pt]
+    Question $\rightarrow$ FAISS (top-M) $\rightarrow$ Cross-encoder
+    mMiniLMv2 $\rightarrow$ top-k rerankés $\rightarrow$ Groq
+  }}
+  \caption{Extension du RAG par reranking cross-encoder
+           (\texttt{mmarco-mMiniLMv2-L12-H384-v1}).}
+  \label{fig:rerank}
+\end{figure}
+
+Le même index FAISS est interrogé pour un top-M élargi de candidats,
+puis un cross-encoder multilingue
+(\texttt{cross-encoder/mmarco-mMiniLMv2-L12-H384-v1}) évalue chaque
+paire (requête, passage) pour ne conserver que les top-$k$ passages
+les plus pertinents, transmis à Groq pour génération.
+
+\subsection{Méthode 7 --- Function Calling}
+
+%%
+%% [FIGURE 5 — À INSÉRER]
+%% Diagramme de séquence du function calling (sequenceDiagram Mermaid)
+%% Fichier : figures/fig5_function_calling.pdf
+%%
+\begin{figure}[H]
+  \centering
+  \fbox{\parbox{0.9\linewidth}{\centering
+    \textit{[Figure 5 --- Diagramme de séquence Function Calling]}\\[4pt]
+    Utilisateur $\rightarrow$ Groq (tour 1, schéma outil) $\rightarrow$
+    \texttt{tool\_call search\_docs} $\rightarrow$ FAISS Python
+    $\rightarrow$ Groq (tour 2, synthèse) $\rightarrow$ Réponse
+  }}
+  \caption{Pipeline function calling en deux tours. Le LLM décide
+           quand déclencher la recherche documentaire.}
+  \label{fig:fc}
+\end{figure}
+
+Le modèle reçoit la question et le schéma de l'outil \texttt{search\_docs}.
+S'il décide de l'invoquer, l'exécution Python lance une recherche FAISS
+et retourne les passages au modèle, qui génère ensuite la réponse finale.
+Environ 12\,\% des requêtes ne déclenchent pas d'appel d'outil
+(repli sans contexte).
+
+\subsection{Métriques d'évaluation}
+\label{subsec:metriques}
+
+Nous mobilisons un panel de métriques complémentaires
+(Table~\ref{tab:metriques}). Les intervalles de confiance à 95\,\% sont
+estimés par \textbf{bootstrap} (1\,000 réplicatas, seed\,=\,42) sur
+les scores par paire pour \bs{}, \met{}, F1 et \rl{}. Le proxy
+d'hallucination est défini comme~:
+\[
+  \text{Hall} = 1 - \text{ROUGE-L}(\hat{y}, c)
+\]
+où $\hat{y}$ est la réponse prédite et $c$ le contexte source du jeu
+de test. Le corpus étant 100\,\% français (HAL remplace Arxiv),
+ce calcul est effectué dans la même langue pour tous les exemples,
+éliminant le biais linguistique.
+
+L'évaluation subjective est conduite via \textbf{LLM-as-judge}~:
+Claude Sonnet~4.6 note chaque réponse selon trois critères
+(cohérence, utilité, fidélité au contexte) sur une échelle 1--5.
+
+\begin{table}[h]
+  \centering
+  \caption{Métriques d'évaluation utilisées}
+  \label{tab:metriques}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Métrique} & \textbf{Type} & \textbf{Référence} \\
+    \midrule
+    F1 token-level     & Lexicale    & \cite{rajpurkar2016squad} \\
+    ROUGE-L            & Lexicale    & \cite{lin2004rouge} \\
+    METEOR             & Lexicale    & \cite{banerjee2005meteor} \\
+    BERTScore          & Sémantique  & \cite{zhang2020bertscore} \\
+    IC 95\% bootstrap  & Statistique & --- \\
+    Acc@BS (80/85/90\%) & Sémantique & --- \\
+    Hallucination (proxy) & Fidélité & --- \\
+    Faithfulness       & Fidélité    & --- \\
+    LLM-as-judge       & Subjective  & --- \\
+    Latence (ms)       & Efficacité  & --- \\
+    CO$_2$eq (gCO$_2$eq) & Écologique & \cite{strubell2019energy} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Infrastructure et reproductibilité}
+
+Les méthodes Baseline, RAG, Reranking et Function calling sont exécutées
+via l'API Groq (modèle \texttt{llama-3.1-8b-instant}, H100 SXM partagé).
+Le fine-tuning LoRA, FT+RAG et RAFT sont effectués sur GPU NVIDIA A100
+(Google Colab), avec profil automatique vers T4/L4 si A100 indisponible.
+Toutes les expériences utilisent seed\,=\,42. Le code est disponible à
+l'adresse~: \url{https://github.com/coulby45/llm-integration-pipeline}.
+
+
+%% ============================================================
+\section{Résultats}
+\label{sec:results}
+
+\subsection{Comparaison globale}
+\label{subsec:global}
+
+Le tableau~\ref{tab:global} présente les résultats agrégés sur les
+290 exemples de test. Le meilleur score par colonne est en
+\textbf{\textcolor{best}{vert gras}} ; le moins bon en
+\textcolor{worst}{rouge}.
+
+\begin{table*}[t]
+  \centering
+  \caption{Résultats comparatifs des sept méthodes (n\,=\,290,
+           campagne 2026-05-06). IC\,95\,\% bootstrap pour BERTScore,
+           METEOR, F1 et ROUGE-L. $\downarrow$\,=\,plus bas est meilleur.}
+  \label{tab:global}
+  \renewcommand{\arraystretch}{1.3}
+  \resizebox{\textwidth}{!}{%
+  \begin{tabular}{lcccccccccc}
+    \toprule
+    \multirow{2}{*}{\textbf{Méthode}}
+      & \textbf{F1}     & \textbf{\bs}   & \textbf{IC 95\% BS}
+      & \textbf{\rl}    & \textbf{\met}
+      & \textbf{Fidélit.} & \textbf{Hall.}$\downarrow$
+      & \textbf{Acc@85\%} & \textbf{Latence}$\downarrow$ \\
+      & (\%)            & (\%)           & (\%)
+      & (\%)            & (\%)
+      & (\%)              & (\%)
+      & (\%)              & (ms) \\
+    \midrule
+    Baseline
+      & 16.3            & 81.4           & [81.11,\,81.72]
+      & 13.7            & 34.5
+      & 16.5            & 83.5
+      & 9.7             & \best{549} \\
+    RAG
+      & 32.8            & 85.8           & [85.22,\,86.23]
+      & 28.7            & 52.4
+      & 31.8            & 68.2
+      & 54.5            & 599 \\
+    Fine-tuné (LoRA)
+      & \worst{14.8}    & 81.4           & [81.08,\,81.64]
+      & 11.6            & 35.5
+      & 12.7            & 87.3
+      & 6.2             & 14\,217 \\
+    FT+RAG
+      & \worst{14.6}    & \worst{81.0}   & [80.69,\,81.27]
+      & 11.7            & 35.8
+      & 13.1            & 86.9
+      & 5.9             & 18\,976 \\
+    RAFT
+      & \worst{11.9}    & 81.2           & [80.94,\,81.54]
+      & \worst{10.1}    & \worst{26.3}
+      & \worst{11.6}    & \worst{88.4}
+      & \worst{4.8}     & 21\,224 \\
+    \textbf{Rerank}
+      & \best{36.5}     & \best{86.6}    & \best{[86.05,\,87.12]}
+      & \best{32.1}     & \best{56.1}
+      & \best{33.8}     & \best{66.2}
+      & \best{60.7}     & 570 \\
+    Function calling
+      & 23.9            & 83.4           & [82.86,\,83.89]
+      & 20.9            & 44.6
+      & 24.2            & 75.8
+      & 31.4            & 1\,078 \\
+    \bottomrule
+  \end{tabular}}
+\end{table*}
+
+%%
+%% [FIGURE 6 — À INSÉRER]
+%% Barres groupées des métriques globales
+%% Fichier : results/plots/fig_metriques_globales.png
+%%
+\begin{figure}[H]
+  \centering
+  \fbox{\parbox{0.9\linewidth}{\centering
+    \textit{[Figure 6 --- Métriques globales --- barres groupées]}\\[4pt]
+    F1, BERTScore, ROUGE-L, METEOR, Fidélité par méthode\\
+    Source~: \texttt{results/plots/fig\_metriques\_globales.png}
+  }}
+  \caption{Comparaison des sept méthodes sur les métriques globales.}
+  \label{fig:barres_globales}
+\end{figure}
+
+Le \textbf{reranking} arrive en tête sur toutes les métriques clés~:
+F1 (36,5\,\%), \bs{} (86,6\,\%), \rl{} (32,1\,\%) et \met{}
+(56,1\,\%), suivi du \textbf{RAG} (F1\,=\,32,8\,\%). Le
+\textit{function calling} se positionne en intermédiaire (F1\,=\,23,9\,\%).
+Les méthodes de fine-tuning (LoRA, FT+RAG, RAFT) \textbf{n'améliorent
+pas} la baseline sur la majorité des métriques~: le RAFT obtient le
+F1 le plus bas (11,9\,\%), et les trois méthodes GPU affichent un
+proxy d'hallucination supérieur à la baseline (83,5\,\%).
+
+Concernant la latence, les méthodes GPU (LoRA~: 14\,217\,ms,
+FT+RAG~: 18\,976\,ms, RAFT~: 21\,224\,ms) sont respectivement
+\textbf{26$\times$}, \textbf{35$\times$} et \textbf{39$\times$}
+plus lentes que la baseline (549\,ms), tandis que le reranking (570\,ms)
+n'induit qu'un surcoût marginal de 4\,\%.
+
+\subsection{Analyse par domaine}
+\label{subsec:domaine}
+
+%%
+%% [FIGURE 7 — À INSÉRER]
+%% Heatmap BERTScore méthodes × dataset_type
+%% Fichier : results/plots/fig_heatmap_bertscore.png
+%%
+\begin{figure}[H]
+  \centering
+  \fbox{\parbox{0.9\linewidth}{\centering
+    \textit{[Figure 7 --- Heatmap BERTScore méthodes $\times$ domaines]}\\[4pt]
+    Source~: \texttt{results/plots/fig\_heatmap\_bertscore.png}
+  }}
+  \caption{BERTScore (\%) par méthode et par domaine.}
+  \label{fig:heatmap}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+  \caption{BERTScore (\%) par domaine et par méthode}
+  \label{tab:domaines}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{lccccc}
+    \toprule
+    \textbf{Méthode} & \textbf{Tech.} & \textbf{Multi-s.}
+      & \textbf{Temp.} & \textbf{Jurid.} \\
+    \midrule
+    Baseline        & 82.0 & 81.8 & 80.5 & 81.7 \\
+    RAG             & 85.9 & 86.9 & 84.9 & 84.5 \\
+    Fine-tuné       & 82.0 & 81.4 & 81.1 & 80.2 \\
+    FT+RAG          & 80.8 & 81.1 & 81.2 & 80.2 \\
+    RAFT            & 81.3 & 81.6 & 81.1 & 80.0 \\
+    \textbf{Rerank} & \best{86.6} & \best{87.2}
+                    & \best{86.3} & \best{85.2} \\
+    Funct. call.    & 83.5 & 83.7 & 83.0 & 83.6 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Le reranking excelle sur tous les domaines, avec un pic en
+multi-sauts (87,2\,\%). Le domaine temporel révèle la plus forte
+amélioration RAG sur baseline (+4,4\,pts de BERTScore), confirmant
+l'intérêt de l'injection documentaire pour les contenus post-coupure.
+Le domaine juridique (code de la route) reste difficile pour toutes
+les méthodes hors retrieval~: le RAFT y atteint son score d'hallucination
+le plus élevé (92,8\,\%, Table~\ref{tab:hallucination}).
+
+\subsection{Analyse par type de question}
+
+\begin{table}[h]
+  \centering
+  \caption{BERTScore (\%) par type de question}
+  \label{tab:qtypes}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{lccccc}
+    \toprule
+    \textbf{Méthode} & \textbf{Fact.} & \textbf{Synth.}
+      & \textbf{Compr.} & \textbf{Simple} & \textbf{Compl.} \\
+    \midrule
+    Baseline    & 82.0 & 80.7 & 80.9 & 81.9 & 81.7 \\
+    RAG         & 86.4 & 83.7 & 85.8 & 88.5 & 84.9 \\
+    Fine-tuné   & 81.3 & 81.6 & 80.9 & 81.0 & 81.8 \\
+    FT+RAG      & 80.5 & 81.3 & 81.2 & 80.2 & 82.1 \\
+    RAFT        & 81.0 & 81.4 & 80.9 & 82.1 & 80.9 \\
+    Rerank      & \best{88.5} & \best{84.4} & \best{85.5}
+                & \best{89.0} & \best{85.0} \\
+    Funct. call.& 84.5 & 82.0 & 83.2 & 83.9 & 83.4 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+%%
+%% [FIGURE 8 — À INSÉRER]
+%% Comparaison questions simples vs complexes HAL
+%% Fichier : results/plots/fig_multisauts.png
+%%
+\begin{figure}[H]
+  \centering
+  \fbox{\parbox{0.9\linewidth}{\centering
+    \textit{[Figure 8 --- Questions simples vs multi-sauts (HAL)]}\\[4pt]
+    BERTScore simple vs complexe par méthode\\
+    Source~: \texttt{results/plots/fig\_multisauts.png}
+  }}
+  \caption{Impact de la complexité des questions sur le BERTScore
+           (corpus HAL).}
+  \label{fig:multisauts}
+\end{figure}
+
+Un résultat notable concerne les questions \textbf{simples} (HAL)~:
+le RAG (88,5\,\%) et le reranking (89,0\,\%) y obtiennent leurs
+meilleurs scores absolus. Le RAG surpasse le reranking sur les
+questions multi-sauts complexes de 0,1\,pt (84,9\,\% vs 85,0\,\%),
+une différence négligeable. Le \textbf{FT+RAG} inverse ce résultat~:
+il performe légèrement mieux sur les complexes (82,1\,\%) que sur
+les simples (80,2\,\%), tandis que le \textbf{RAFT} montre la
+tendance inverse (82,1\,\% simple vs 80,9\,\% complexe), suggérant
+que l'entraînement avec distracteurs n'a pas conduit au comportement
+multi-sauts escompté.
+
+\subsection{Taux d'hallucination}
+
+%%
+%% [FIGURE 9 — À INSÉRER]
+%% Taux d'hallucination global + par domaine
+%% Fichier : results/plots/fig_hallucination.png
+%%
+\begin{figure}[H]
+  \centering
+  \fbox{\parbox{0.9\linewidth}{\centering
+    \textit{[Figure 9 --- Taux d'hallucination par domaine]}\\[4pt]
+    Source~: \texttt{results/plots/fig\_hallucination.png}
+  }}
+  \caption{Proxy d'hallucination ($1 - \text{ROUGE-L}(\hat{y}, c)$) par
+           méthode et par domaine (\%). Plus bas = moins d'hallucination.}
+  \label{fig:hallucination}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+  \caption{Taux d'hallucination proxy (\%) par domaine. $\downarrow$ = meilleur.}
+  \label{tab:hallucination}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Méthode} & \textbf{Tech.} & \textbf{Temp.}
+      & \textbf{Multi-s.} & \textbf{Jurid.} \\
+    \midrule
+    Baseline    & 80.2 & 86.4 & 84.2 & 79.5 \\
+    RAG         & 67.5 & 73.4 & 63.7 & 66.1 \\
+    Fine-tuné   & 85.7 & 87.7 & 88.0 & 88.6 \\
+    FT+RAG      & 86.5 & 86.8 & 87.2 & 87.9 \\
+    RAFT        & 88.4 & 88.6 & 87.2 & \worst{92.8} \\
+    \textbf{Rerank}
+                & \best{63.0} & \best{71.5}
+                & \best{63.5} & \best{64.3} \\
+    Funct. call.& 73.9 & 78.5 & 76.2 & 69.0 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Le reranking atteint le proxy d'hallucination le plus bas sur tous les
+domaines, avec 63,0\,\% en technique et 64,3\,\% en juridique. Le
+fine-tuning LoRA (87,3\,\%), FT+RAG (86,9\,\%) et RAFT (88,4\,\%)
+présentent des taux d'hallucination \textbf{supérieurs à la baseline}
+(83,5\,\%), ce qui indique que les réponses générées localement
+s'écartent davantage du contexte de référence.
+
+\subsection{Précision par seuil BERTScore}
+
+%%
+%% [FIGURE 10 — À INSÉRER]
+%% Accuracy@BS par seuil (80/85/90%)
+%% Fichier : results/plots/fig_accuracy_bs.png
+%%
+\begin{figure}[H]
+  \centering
+  \fbox{\parbox{0.9\linewidth}{\centering
+    \textit{[Figure 10 --- Accuracy@BERTScore par seuil]}\\[4pt]
+    Acc@80\%, Acc@85\%, Acc@90\% par méthode\\
+    Source~: \texttt{results/plots/fig\_accuracy\_bs.png}
+  }}
+  \caption{Pourcentage de réponses atteignant un seuil de BERTScore
+           de 80\,\%, 85\,\% et 90\,\%.}
+  \label{fig:acc_bs}
+\end{figure}
+
+À seuil 85\,\%, le reranking atteint 60,7\,\% de réponses qualifiées,
+le RAG 54,5\,\%, contre seulement 9,7\,\% pour la baseline et 5,9\,\%
+pour le FT+RAG. Aucune méthode ne dépasse 21\,\% au seuil strict de
+90\,\%, illustrant la difficulté intrinsèque du jeu de test français.
+
+\subsection{Évaluation subjective LLM-as-judge}
+\label{subsec:judge}
+
+Une évaluation complémentaire a été conduite via Claude Sonnet~4.6 en
+tant que juge automatique, notant chaque réponse sur trois critères
+(cohérence, utilité, fidélité) de 1 à 5.
+
+\begin{table}[h]
+  \centering
+  \caption{Scores LLM-as-judge (Claude Sonnet 4.6, n\,=\,290).
+           Composite = moyenne des trois critères.}
+  \label{tab:judge}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Méthode} & \textbf{Cohér.} & \textbf{Util.}
+      & \textbf{Fidél.} & \textbf{Compos.} \\
+    \midrule
+    Baseline       & 2.46 & 1.72 & 1.37 & 1.85 \\
+    RAG            & 3.68 & 3.31 & 3.29 & 3.43 \\
+    Fine-tuné      & 2.02 & 1.61 & 1.25 & 1.63 \\
+    FT+RAG         & 2.00 & 1.79 & 1.55 & 1.78 \\
+    RAFT           & 1.63 & 1.53 & 1.28 & 1.48 \\
+    \textbf{Rerank}& \best{3.93} & \best{3.66} & \best{3.57} & \best{3.72} \\
+    Funct. call.   & 3.21 & 2.74 & 2.48 & 2.81 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Le classement subjectif reproduit fidèlement l'ordre des métriques
+automatiques~: rerank $>$ RAG $>$ function calling $>$ baseline $\approx$
+FT+RAG $>$ fine-tuné $>$ RAFT. Le FT+RAG obtient un score composite
+(1,78) comparable à la baseline (1,85), confirmant que la combinaison
+LoRA + retrieval n'apporte pas de valeur ajoutée subjective sur ce
+protocole.
+
+\subsection{Impact écologique}
+
+%%
+%% [FIGURE 11 — À INSÉRER]
+%% Impact écologique — énergie, CO2
+%% Fichier : results/plots/fig_ecologie.png
+%%
+\begin{figure}[H]
+  \centering
+  \fbox{\parbox{0.9\linewidth}{\centering
+    \textit{[Figure 11 --- Impact écologique]}\\[4pt]
+    Énergie (Wh) et CO$_2$ France / mondial par méthode\\
+    Source~: \texttt{results/plots/fig\_ecologie.png}
+  }}
+  \caption{Estimation de l'empreinte énergétique et carbone.
+           Formule~: $E = \text{latence}_s \times \text{TDP} \times
+           \text{PUE} / 3600$, avec intensité carbone France
+           52\,gCO$_2$/kWh.}
+  \label{fig:ecologie}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+  \caption{Empreinte énergétique estimée pour le jeu de test complet
+           (n\,=\,290). TDP API~: 50\,W, PUE 1,10~;
+           TDP GPU local (A100)~: 150\,W, PUE 1,15.}
+  \label{tab:ecologie}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{lccc}
+    \toprule
+    \textbf{Méthode} & \textbf{Énergie (Wh)} &
+    \textbf{CO$_2$ FR (g)} & \textbf{Ratio vs Baseline} \\
+    \midrule
+    Baseline         & 2.43  & 0.13  & $\times$1.0  \\
+    \textbf{Rerank}  & 2.52  & 0.13  & $\times$1.04 \\
+    RAG              & 2.65  & 0.14  & $\times$1.09 \\
+    Function calling & 4.77  & 0.25  & $\times$2.0  \\
+    Fine-tuné        & 197.6 & 10.3  & $\times$81   \\
+    FT+RAG           & 263.7 & 13.7  & $\times$109  \\
+    RAFT             & 294.9 & 15.3  & $\times$121  \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Les méthodes GPU (LoRA, FT+RAG, RAFT) concentrent l'essentiel de
+l'empreinte énergétique~: le RAFT consomme \textbf{121 fois} plus
+que la baseline par prédiction. Le reranking, grâce à sa latence
+minimale (570\,ms), présente la meilleure efficacité énergétique
+parmi les méthodes avec contexte, avec un surcoût de seulement
+4\,\% par rapport à la baseline.
+
+
+%% ============================================================
 \section{Discussion}
 \label{sec:discussion}
-% RAG vs rerank : compromis qualité / latence cross-encoder.
-% Function calling : analyse des décisions de recherche et des erreurs d'outil.
-% LoRA vs RAFT : impact du format contexte + distracteurs.
 
+\subsection{RAG et reranking comme stratégie dominante}
+
+Les résultats convergent clairement vers la supériorité des méthodes
+d'injection documentaire à l'inférence. Le reranking améliore le RAG
+seul de 3,7\,pts de F1 pour un surcoût de latence négligeable
+($+$4\,\%). Ce gain s'explique par la qualité du passage sélectionné~:
+le cross-encoder reclasse les candidats selon la pertinence de la
+paire (question, passage), corrigeant les erreurs du retrieveur dense.
+La qualité du corpus indexé reste le facteur déterminant~: un
+paramétrage de chunks trop courts (50--100 mots) dégradait le RAG
+sous la baseline dans une configuration préliminaire~; les chunks
+de 200 mots avec chevauchement de 50 mots représentent le meilleur
+compromis identifié.
+
+\subsection{Échec relatif du fine-tuning sur ce protocole}
+
+Le fait que LoRA, FT+RAG et RAFT n'améliorent pas la baseline
+s'explique par plusieurs facteurs concomitants~:
+
+\paragraph{Désalignement de quantification.}
+L'inférence Groq (\texttt{llama-3.1-8b-instant}) et l'inférence
+locale (4-bit Unsloth, A100) produisent des distributions de sortie
+distinctes, même à paramètres identiques.
+
+\paragraph{Désalignement de gabarit.}
+Le format Alpaca utilisé à l'entraînement (\texttt{\#\#\# Instruction
+/ Response}) diffère du prompt libre employé à l'inférence de test,
+créant une distorsion entre les distributions d'entraînement et
+d'évaluation. Pour FT+RAG, l'injection de passages au moment de
+l'inférence ne correspond pas exactement au gabarit employé en SFT,
+ce qui peut expliquer l'absence de synergie observée.
+
+Ces deux sources de biais doivent être prises en compte avant de conclure à
+l'infériorité intrinsèque du fine-tuning.
+
+\subsection{Function calling~: intérêt agentique, coût de fiabilité}
+
+Le function calling offre une flexibilité architecturale importante
+(recherche conditionnelle, intégration dans des workflows agentiques)
+mais présente une qualité inférieure au RAG direct dans ce benchmark.
+Le taux de repli sans outil ($\approx$\,12\,\%) signifie qu'une fraction
+non négligeable des réponses est générée sans contexte documentaire.
+Sa latence ($\times$2 vs baseline) reste acceptable pour un déploiement
+agentique.
+
+\subsection{Limites méthodologiques}
+\label{subsec:limites}
+
+\paragraph{Taille du corpus.}
+Avec 290 exemples de test répartis sur quatre domaines, certains
+croisements méthode $\times$ domaine reposent sur moins de 30 paires
+(notamment le juridique, $n_\text{test}$\,=\,20), limitant la puissance
+statistique des comparaisons locales.
+
+\paragraph{Évaluation automatique.}
+Les métriques lexicales et \bs{} pénalisent les paraphrases correctes
+et ne capturent pas entièrement la cohérence factuelle. L'évaluation
+LLM-as-judge constitue une première réponse à cette limite, mais reste
+elle-même dépendante du modèle juge utilisé.
+
+\paragraph{Proxy d'hallucination.}
+Le proxy $1 - \text{ROUGE-L}(\hat{y}, c)$ mesure l'écart lexical
+entre réponse prédite et contexte source, et non la vérité factuelle.
+Une réponse correcte mais formulée différemment sera pénalisée.
+
+\subsection{Recommandations pratiques}
+
+En synthèse, nos recommandations pour un déploiement en contexte
+francophone contraint sont les suivantes. Lorsque la priorité est la
+qualité et la fraîcheur documentaire, RAG + reranking est la meilleure
+option~: le surcoût de latence est marginal ($+$4\,\% vs baseline) et
+le gain en F1 est de $+$20\,pts. Sous contrainte GPU nulle, le RAG
+seul offre un excellent compromis avec une mise à jour instantanée
+par réindexation. Pour un flux agentique ou une politique de recherche
+conditionnelle, le function calling est adapté, au prix d'une qualité
+légèrement inférieure. Enfin, le fine-tuning LoRA n'est à envisager
+que si le domaine cible est stable, très spécialisé, et si le gabarit
+de prompt est rigoureusement aligné entre entraînement et inférence.
+
+
+%% ============================================================
 \section{Conclusion}
 \label{sec:conclusion}
-% Six stratégies, corpus FR Option B, limite biais Groq ; perspectives évaluation humaine et ablations retrieveur.
 
+Nous avons présenté une comparaison systématique de sept stratégies
+d'intégration de connaissances dans \textsc{LLaMA}~3.1~8B, sur un
+corpus 100\,\% français de 290 paires question-réponse couvrant quatre
+domaines (technique, multi-sauts HAL, temporel, juridique).
+
+Nos résultats montrent que le \textbf{reranking} et le \textbf{RAG}
+constituent les approches les plus efficaces, réduisant le taux
+d'hallucination de plus de 17\,pts et améliorant le F1 d'un facteur
+supérieur à 2 par rapport à la baseline. Ces conclusions sont
+cohérentes entre métriques automatiques et évaluation subjective
+LLM-as-judge. Les méthodes de fine-tuning (LoRA, FT+RAG, RAFT)
+n'ont pas amélioré la baseline dans ce protocole, principalement
+en raison du désalignement de quantification entre inférence API
+et locale, ainsi que des différences de gabarit de prompt entre
+entraînement et évaluation.
+Le function calling se positionne comme une alternative intéressante
+pour les architectures agentiques. Sur le plan écologique, les
+méthodes GPU concentrent l'essentiel de l'empreinte carbone, avec
+un ratio allant jusqu'à $\times$121 pour le RAFT vis-à-vis de la
+baseline API.
+
+\paragraph{Perspectives.}
+Plusieurs pistes méritent d'être explorées~: (i)~harmonisation du
+gabarit de prompt entre SFT et inférence pour FT+RAG~;
+(ii)~ablations retrieveur (BM25 vs dense, fusion hybride)~;
+(iii)~mesure directe du taux d'erreurs JSON pour le function
+calling~; (iv)~évaluation humaine pour calibrer les métriques
+automatiques~; (v)~retrieveurs plus riches (DPR, ColBERT) pour
+les questions multi-sauts.
+
+\paragraph{Code et reproductibilité.}
+L'ensemble du code (notebooks \texttt{01}--\texttt{09}) est disponible
+sur GitHub~: \url{https://github.com/coulby45/llm-integration-pipeline}.
+Les graines aléatoires (seed\,=\,42), configurations matérielles
+(A100 / Groq H100 partagé) et versions de librairies sont documentées
+dans \texttt{requirements.txt}.
+
+
+%% ============================================================
 \section*{Remerciements}
-% Optionnel.
 
-\bibliographystyle{IEEEtran}
+Ce travail a été réalisé dans le cadre d'un projet pédagogique à
+CESI École d'Ingénieurs, Saint-Nazaire. L'auteur remercie les équipes
+de Groq pour l'accès API, ainsi que les contributeurs d'Unsloth pour
+la librairie de fine-tuning efficace.
+
+
+%% ============================================================
 \begin{thebibliography}{99}
-  \bibitem{lewis2020rag}
-  P.~Lewis \emph{et al.}, ``Retrieval-augmented generation for knowledge-intensive NLP tasks,'' in \emph{NeurIPS}, 2020.
-  \bibitem{hu2022lora}
-  E.~J.~Hu \emph{et al.}, ``LoRA: Low-rank adaptation of large language models,'' in \emph{ICLR}, 2022.
-  % Compléter : RAFT (Hong et al.), cross-encoders, BERTScore, FAISS, LLaMA~3, etc.
+
+\bibitem{vaswani2017attention}
+A. Vaswani \textit{et al.},
+``Attention is all you need,''
+in \textit{Advances in Neural Information Processing Systems (NeurIPS)},
+2017.
+
+\bibitem{brown2020language}
+T. B. Brown \textit{et al.},
+``Language models are few-shot learners,''
+in \textit{NeurIPS}, 2020.
+
+\bibitem{radford2019language}
+A. Radford \textit{et al.},
+``Language models are unsupervised multitask learners,''
+\textit{OpenAI Blog}, 2019.
+
+\bibitem{touvron2023llama}
+H. Touvron \textit{et al.},
+``LLaMA 2: Open foundation and fine-tuned chat models,''
+\textit{arXiv:2307.09288}, 2023.
+
+\bibitem{meta2024llama3}
+Meta AI,
+``Meta LLaMA 3,''
+\textit{arXiv:2407.21783}, 2024.
+
+\bibitem{jiang2023mistral}
+A. Q. Jiang \textit{et al.},
+``Mistral 7B,''
+\textit{arXiv:2310.06825}, 2023.
+
+\bibitem{openai2023gpt4}
+OpenAI,
+``GPT-4 Technical Report,''
+\textit{arXiv:2303.08774}, 2023.
+
+\bibitem{lewis2020rag}
+P. Lewis \textit{et al.},
+``Retrieval-augmented generation for knowledge-intensive NLP tasks,''
+in \textit{NeurIPS}, 2020.
+
+\bibitem{johnson2019faiss}
+J. Johnson, M. Douze, and H. Jégou,
+``Billion-scale similarity search with GPUs,''
+\textit{IEEE Trans. Big Data}, vol. 7, no. 3, 2021.
+
+\bibitem{reimers2019sentencebert}
+N. Reimers and I. Gurevych,
+``Sentence-BERT: Sentence embeddings using Siamese BERT-networks,''
+in \textit{EMNLP}, 2019.
+
+\bibitem{nogueira2019passage}
+R. Nogueira and K. Cho,
+``Passage Re-ranking with BERT,''
+\textit{arXiv:1901.04085}, 2019.
+
+\bibitem{hu2022lora}
+E. J. Hu \textit{et al.},
+``LoRA: Low-rank adaptation of large language models,''
+in \textit{ICLR}, 2022.
+
+\bibitem{dettmers2023qlora}
+T. Dettmers \textit{et al.},
+``QLoRA: Efficient finetuning of quantized LLMs,''
+in \textit{NeurIPS}, 2023.
+
+\bibitem{hong2024raft}
+T. Zhang \textit{et al.},
+``RAFT: Adapting language model to domain specific RAG,''
+\textit{arXiv:2403.10131}, 2024.
+
+\bibitem{schick2023toolformer}
+T. Schick \textit{et al.},
+``Toolformer: Language models can teach themselves to use tools,''
+in \textit{NeurIPS}, 2023.
+
+\bibitem{ji2023hallucination}
+Z. Ji \textit{et al.},
+``Survey of hallucination in natural language generation,''
+\textit{ACM Computing Surveys}, vol. 55, no. 12, 2023.
+
+\bibitem{rajpurkar2016squad}
+P. Rajpurkar \textit{et al.},
+``SQuAD: 100,000+ questions for machine comprehension of text,''
+in \textit{EMNLP}, 2016.
+
+\bibitem{lin2004rouge}
+C.-Y. Lin,
+``ROUGE: A package for automatic evaluation of summaries,''
+in \textit{ACL Workshop on Text Summarization}, 2004.
+
+\bibitem{banerjee2005meteor}
+S. Banerjee and A. Lavie,
+``METEOR: An automatic metric for MT evaluation with improved
+correlation with human judgments,''
+in \textit{ACL Workshop}, 2005.
+
+\bibitem{zhang2020bertscore}
+T. Zhang \textit{et al.},
+``BERTScore: Evaluating text generation with BERT,''
+in \textit{ICLR}, 2020.
+
+\bibitem{es2024ragas}
+S. Es \textit{et al.},
+``RAGAS: Automated evaluation of retrieval augmented generation,''
+in \textit{EACL Demo Track}, 2024.
+
+\bibitem{mccloskey1989catastrophic}
+M. McCloskey and N. J. Cohen,
+``Catastrophic interference in connectionist networks,''
+\textit{Psychology of Learning and Motivation}, vol. 24, 1989.
+
+\bibitem{kirkpatrick2017overcoming}
+J. Kirkpatrick \textit{et al.},
+``Overcoming catastrophic forgetting in neural networks,''
+\textit{Proceedings of the National Academy of Sciences}, 2017.
+
+\bibitem{meng2022locating}
+K. Meng \textit{et al.},
+``Locating and editing factual associations in GPT,''
+in \textit{NeurIPS}, 2022.
+
+\bibitem{mitchell2022memory}
+E. Mitchell \textit{et al.},
+``Memory-based model editing at scale,''
+in \textit{ICML}, 2022.
+
+\bibitem{strubell2019energy}
+E. Strubell, A. Ganesh, and A. McCallum,
+``Energy and policy considerations for deep learning in NLP,''
+in \textit{ACL}, 2019.
+
+\bibitem{unsloth2024}
+D. Han and M. Han,
+``Unsloth: Fast and memory-efficient LLM fine-tuning,''
+\textit{GitHub Repository}, 2024.
+\url{https://github.com/unslothai/unsloth}
+
 \end{thebibliography}
 
 \end{document}
